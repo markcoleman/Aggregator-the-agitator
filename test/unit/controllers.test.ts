@@ -5,7 +5,7 @@ import { TransactionsController } from '../../src/http/controllers/transactions.
 import { ContactController } from '../../src/http/controllers/contact.controller.js';
 import { PaymentNetworksController } from '../../src/http/controllers/payment-networks.controller.js';
 import { StatementsController } from '../../src/http/controllers/statements.controller.js';
-import { z } from 'zod';
+import { NotFoundError, ValidationError } from '../../src/shared/errors/index.js';
 
 // Mock services
 const mockAccountsService = {
@@ -36,13 +36,14 @@ describe('Controllers Error Handling', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockRequest = {
       user: {
         userId: 'user123',
         payload: {
           sub: 'user123',
-          scope: 'accounts:read transactions:read contact:read payment_networks:read statements:read',
+          scope:
+            'accounts:read transactions:read contact:read payment_networks:read statements:read',
           aud: 'fdx-resource-api',
           iss: 'mock-issuer',
         },
@@ -169,7 +170,9 @@ describe('Controllers Error Handling', () => {
 
     it('should handle unexpected errors', async () => {
       mockRequest.params = { accountId: 'acc-001' };
-      mockPaymentNetworksService.getPaymentNetworks.mockRejectedValue(new Error('Unexpected error'));
+      mockPaymentNetworksService.getPaymentNetworks.mockRejectedValue(
+        new Error('Unexpected error'),
+      );
 
       await controller.getPaymentNetworks(mockRequest as FastifyRequest, mockReply as FastifyReply);
 
@@ -216,6 +219,122 @@ describe('Controllers Error Handling', () => {
       await controller.getStatementById(mockRequest as FastifyRequest, mockReply as FastifyReply);
 
       expect(mockReply.code).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('AccountsController', () => {
+    let controller: AccountsController;
+
+    beforeEach(() => {
+      controller = new AccountsController(mockAccountsService as any);
+    });
+
+    it('should handle malformed query parameters in getAccounts', async () => {
+      mockRequest.query = { limit: 'not-a-number' };
+      mockRequest.params = {};
+
+      await controller.getAccounts(mockRequest as FastifyRequest, mockReply as FastifyReply);
+
+      expect(mockReply.code).toHaveBeenCalledWith(400);
+    });
+
+    it('should handle missing accountId parameter in getAccountById', async () => {
+      mockRequest.params = {}; // Missing accountId
+
+      await controller.getAccountById(mockRequest as FastifyRequest, mockReply as FastifyReply);
+
+      expect(mockReply.code).toHaveBeenCalledWith(400);
+    });
+
+    it('should handle service returning null in getAccountById', async () => {
+      mockRequest.params = { accountId: 'non-existent' };
+      const notFoundError = new NotFoundError('Account not found');
+      mockAccountsService.getAccountById.mockRejectedValue(notFoundError);
+
+      await controller.getAccountById(mockRequest as FastifyRequest, mockReply as FastifyReply);
+
+      expect(mockReply.code).toHaveBeenCalledWith(404);
+    });
+  });
+
+  describe('TransactionsController', () => {
+    let controller: TransactionsController;
+
+    beforeEach(() => {
+      controller = new TransactionsController(mockTransactionsService as any);
+    });
+
+    it('should handle malformed date parameters', async () => {
+      mockRequest.params = { accountId: 'acc-001' };
+      mockRequest.query = { fromDate: 'invalid-date' };
+
+      const validationError = new ValidationError('Invalid fromDate format. Use YYYY-MM-DD');
+      mockTransactionsService.getTransactions.mockRejectedValue(validationError);
+
+      await controller.getTransactions(mockRequest as FastifyRequest, mockReply as FastifyReply);
+
+      expect(mockReply.code).toHaveBeenCalledWith(400);
+    });
+
+    it('should handle missing accountId parameter', async () => {
+      mockRequest.params = {}; // Missing accountId
+      mockRequest.query = {};
+
+      await controller.getTransactions(mockRequest as FastifyRequest, mockReply as FastifyReply);
+
+      expect(mockReply.code).toHaveBeenCalledWith(400);
+    });
+  });
+
+  describe('ContactController', () => {
+    let controller: ContactController;
+
+    beforeEach(() => {
+      controller = new ContactController(mockContactService as any);
+    });
+
+    it('should handle missing accountId parameter', async () => {
+      mockRequest.params = {}; // Missing accountId
+
+      await controller.getAccountContact(mockRequest as FastifyRequest, mockReply as FastifyReply);
+
+      expect(mockReply.code).toHaveBeenCalledWith(400);
+    });
+
+    it('should handle service returning null', async () => {
+      mockRequest.params = { accountId: 'non-existent' };
+      const notFoundError = new NotFoundError('Contact not found');
+      mockContactService.getAccountContact.mockRejectedValue(notFoundError);
+
+      await controller.getAccountContact(mockRequest as FastifyRequest, mockReply as FastifyReply);
+
+      expect(mockReply.code).toHaveBeenCalledWith(404);
+    });
+  });
+
+  describe('PaymentNetworksController', () => {
+    let controller: PaymentNetworksController;
+
+    beforeEach(() => {
+      controller = new PaymentNetworksController(mockPaymentNetworksService as any);
+    });
+
+    it('should handle missing accountId parameter', async () => {
+      mockRequest.params = {}; // Missing accountId
+
+      await controller.getPaymentNetworks(mockRequest as FastifyRequest, mockReply as FastifyReply);
+
+      expect(mockReply.code).toHaveBeenCalledWith(400);
+    });
+
+    it('should handle service returning empty array', async () => {
+      mockRequest.params = { accountId: 'acc-001' };
+      mockPaymentNetworksService.getPaymentNetworks.mockResolvedValue([]);
+
+      await controller.getPaymentNetworks(mockRequest as FastifyRequest, mockReply as FastifyReply);
+
+      expect(mockReply.code).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith([]);
     });
   });
 });

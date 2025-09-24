@@ -68,6 +68,23 @@ export const CreateConsentResponseSchema = z.object({
   expiresAt: z.string(),
 });
 
+// Consent check schemas for enforcement
+export const ConsentCheckInputSchema = z.object({
+  subjectId: z.string(),
+  clientId: z.string(),
+  scopes: z.array(z.string()),
+  accountIds: z.array(z.string()).optional(),
+  asOf: z.string().optional(), // ISO 8601 timestamp for replay checks
+});
+
+export const ConsentCheckResultSchema = z.object({
+  allow: z.boolean(),
+  reasons: z.array(z.string()).optional(),
+  filteredAccountIds: z.array(z.string()).optional(),
+  consentId: z.string().optional(),
+  expiresAt: z.string().optional(),
+});
+
 // Type exports
 export type ConsentStatus = z.infer<typeof ConsentStatusEnum>;
 export type DataScope = z.infer<typeof DataScopeEnum>;
@@ -77,3 +94,5 @@ export type CreateConsentRequest = z.infer<typeof CreateConsentRequestSchema>;
 export type UpdateConsentRequest = z.infer<typeof UpdateConsentRequestSchema>;
 export type ConsentResponse = z.infer<typeof ConsentResponseSchema>;
 export type CreateConsentResponse = z.infer<typeof CreateConsentResponseSchema>;
+export type ConsentCheckInput = z.infer<typeof ConsentCheckInputSchema>;
+export type ConsentCheckResult = z.infer<typeof ConsentCheckResultSchema>;

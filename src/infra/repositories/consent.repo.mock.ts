@@ -35,6 +35,9 @@ export class MockConsentRepository implements ConsentRepository {
 
   async addAuditEntry(id: string, auditEntry: AuditEntry): Promise<void> {
     const consent = await this.findById(id);
+    if (!consent) {
+      throw new Error(`Consent not found: ${id}`);
+    }
     consent.auditTrail.push(auditEntry);
     this.consents.set(id, consent);
   }
@@ -57,7 +60,13 @@ export class MockConsentRepository implements ConsentRepository {
       id: 'consent-001',
       subjectId: 'user-123', // Match the mock user from integration tests
       clientId: 'client-456', // Match the mock client from integration tests
-      dataScopes: ['accounts:read', 'transactions:read'],
+      dataScopes: [
+        'accounts:read',
+        'transactions:read',
+        'contact:read',
+        'payment_networks:read',
+        'statements:read',
+      ],
       accountIds: ['acc-001', 'acc-002'],
       purpose: 'Account aggregation for budgeting app',
       status: 'ACTIVE',

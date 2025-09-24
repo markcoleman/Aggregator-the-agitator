@@ -6,13 +6,14 @@ import { createApp } from '../../src/app.js';
 vi.mock('../../src/infra/auth/jwksVerifier.js', () => ({
   JwksVerifier: vi.fn().mockImplementation(() => ({
     verifyToken: vi.fn().mockResolvedValue({
-      sub: 'user123',
+      sub: 'user-123', // Match the test consent subject
       scope: 'accounts:read transactions:read contact:read payment_networks:read statements:read',
+      client_id: 'client-456', // Match the test consent client
       aud: 'fdx-resource-api',
       iss: 'mock-issuer',
     }),
     validateScope: vi.fn(),
-    extractUserId: vi.fn().mockReturnValue('user123'),
+    extractUserId: vi.fn().mockReturnValue('user-123'), // Match the test consent subject
   })),
 }));
 
@@ -92,7 +93,7 @@ describe('Accounts API Integration', () => {
       expect(body.balance).toBeDefined();
     });
 
-    it('should return 404 for non-existent account', async () => {
+    it('should return 403 for non-existent account (consent check first)', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/fdx/v6/accounts/non-existent',
@@ -101,10 +102,10 @@ describe('Accounts API Integration', () => {
         },
       });
 
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode).toBe(403);
       
       const body = JSON.parse(response.body);
-      expect(body.code).toBe('NOT_FOUND');
+      expect(body.code).toBe('ACCOUNT_NOT_PERMITTED');
     });
   });
 
