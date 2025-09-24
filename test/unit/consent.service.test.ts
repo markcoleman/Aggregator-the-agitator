@@ -285,7 +285,7 @@ describe('ConsentService', () => {
         'user-123',
         'client-456',
         'acc-001',
-        ['statements:read']
+        ['some:unknown:scope'] // Use a scope that's not in the consent
       );
 
       expect(hasConsent).toBe(false);
@@ -329,6 +329,140 @@ describe('ConsentService', () => {
       );
 
       expect(hasConsent).toBe(false);
+    });
+  });
+
+  describe('check', () => {
+    it('should return deny for invalid input', async () => {
+      const result = await consentService.check({
+        subjectId: '',
+        clientId: 'client-456',
+        scopes: ['accounts:read'],
+      });
+
+      expect(result).toEqual({
+        allow: false,
+        reasons: ['invalid_input'],
+      });
+    });
+
+    it('should return deny when no consents exist', async () => {
+      const result = await consentService.check({
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        scopes: ['accounts:read'],
+      });
+
+      expect(result).toEqual({
+        allow: false,
+        reasons: ['no_consent'],
+      });
+    });
+
+    it('should return allow for valid consent', async () => {
+      mockRepository.seedTestData();
+
+      const result = await consentService.check({
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        scopes: ['accounts:read'],
+        accountIds: ['acc-001'],
+      });
+
+      expect(result.allow).toBe(true);
+      expect(result.consentId).toBe('consent-001');
+      expect(result.filteredAccountIds).toEqual(['acc-001']);
+      expect(result.expiresAt).toBeDefined();
+    });
+
+    it('should return deny for missing scope', async () => {
+      mockRepository.seedTestData();
+
+      const result = await consentService.check({
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        scopes: ['some:unknown:scope'], // Use a scope that's not in the consent
+      });
+
+      expect(result).toEqual({
+        allow: false,
+        reasons: ['missing_scope'],
+      });
+    });
+
+    it('should return deny for wrong client', async () => {
+      mockRepository.seedTestData();
+
+      const result = await consentService.check({
+        subjectId: 'user-123',
+        clientId: 'client-999',
+        scopes: ['accounts:read'],
+      });
+
+      expect(result).toEqual({
+        allow: false,
+        reasons: ['client_mismatch'],
+      });
+    });
+
+    it('should filter account IDs when consent covers subset', async () => {
+      mockRepository.seedTestData();
+
+      const result = await consentService.check({
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        scopes: ['accounts:read'],
+        accountIds: ['acc-001', 'acc-002', 'acc-999'],
+      });
+
+      expect(result.allow).toBe(true);
+      expect(result.filteredAccountIds).toEqual(['acc-001', 'acc-002']);
+    });
+
+    it('should return deny for no account overlap', async () => {
+      mockRepository.seedTestData();
+
+      const result = await consentService.check({
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        scopes: ['accounts:read'],
+        accountIds: ['acc-999'],
+      });
+
+      expect(result).toEqual({
+        allow: false,
+        reasons: ['not_account_scoped'],
+      });
+    });
+
+    it('should return system_error for repository errors', async () => {
+      mockRepository.findBySubjectId = vi.fn().mockRejectedValue(new Error('Database error'));
+
+      const result = await consentService.check({
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        scopes: ['accounts:read'],
+      });
+
+      expect(result).toEqual({
+        allow: false,
+        reasons: ['system_error'],
+      });
+    });
+
+    it('should handle asOf parameter for replay checks', async () => {
+      mockRepository.seedTestData();
+
+      // Test with past date that should be valid
+      const result = await consentService.check({
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        scopes: ['accounts:read'],
+        accountIds: ['acc-001'],
+        asOf: '2024-06-01T00:00:00.000Z',
+      });
+
+      expect(result.allow).toBe(true);
     });
   });
 });

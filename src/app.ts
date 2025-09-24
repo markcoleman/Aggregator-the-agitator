@@ -117,8 +117,7 @@ export async function createApp(): Promise<FastifyInstance> {
   const consentMiddleware = new ConsentMiddleware(consentService);
 
   // TODO: Use consentMiddleware in resource routes - currently prepared for integration
-  // Temporary reference to avoid unused variable warning
-  void consentMiddleware;
+  // Removed - now actively using consentMiddleware
 
   // Controllers
   const accountsController = new AccountsController(accountsService);
@@ -161,41 +160,62 @@ export async function createApp(): Promise<FastifyInstance> {
 
     // Accounts routes
     fastify.get('/fdx/v6/accounts', {
-      preHandler: [authMiddleware.requireScope('accounts:read')],
+      preHandler: [
+        authMiddleware.requireScope('accounts:read'),
+        consentMiddleware.requireConsent(['accounts:read']),
+      ],
       handler: accountsController.getAccounts.bind(accountsController),
     });
 
     fastify.get('/fdx/v6/accounts/:accountId', {
-      preHandler: [authMiddleware.requireScope('accounts:read')],
+      preHandler: [
+        authMiddleware.requireScope('accounts:read'),
+        consentMiddleware.requireConsent(['accounts:read']),
+      ],
       handler: accountsController.getAccountById.bind(accountsController),
     });
 
     // Transactions routes
     fastify.get('/fdx/v6/accounts/:accountId/transactions', {
-      preHandler: [authMiddleware.requireScope('transactions:read')],
+      preHandler: [
+        authMiddleware.requireScope('transactions:read'),
+        consentMiddleware.requireConsent(['transactions:read']),
+      ],
       handler: transactionsController.getTransactions.bind(transactionsController),
     });
 
     // Contact routes
     fastify.get('/fdx/v6/accounts/:accountId/contact', {
-      preHandler: [authMiddleware.requireScope('contact:read')],
+      preHandler: [
+        authMiddleware.requireScope('contact:read'),
+        consentMiddleware.requireConsent(['contact:read']),
+      ],
       handler: contactController.getAccountContact.bind(contactController),
     });
 
     // Payment networks routes
     fastify.get('/fdx/v6/accounts/:accountId/payment-networks', {
-      preHandler: [authMiddleware.requireScope('payment_networks:read')],
+      preHandler: [
+        authMiddleware.requireScope('payment_networks:read'),
+        consentMiddleware.requireConsent(['payment_networks:read']),
+      ],
       handler: paymentNetworksController.getPaymentNetworks.bind(paymentNetworksController),
     });
 
     // Statements routes
     fastify.get('/fdx/v6/accounts/:accountId/statements', {
-      preHandler: [authMiddleware.requireScope('statements:read')],
+      preHandler: [
+        authMiddleware.requireScope('statements:read'),
+        consentMiddleware.requireConsent(['statements:read']),
+      ],
       handler: statementsController.getStatements.bind(statementsController),
     });
 
     fastify.get('/fdx/v6/accounts/:accountId/statements/:statementId', {
-      preHandler: [authMiddleware.requireScope('statements:read')],
+      preHandler: [
+        authMiddleware.requireScope('statements:read'),
+        consentMiddleware.requireConsent(['statements:read']),
+      ],
       handler: statementsController.getStatementById.bind(statementsController),
     });
   });

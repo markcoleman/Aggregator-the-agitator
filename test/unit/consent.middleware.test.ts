@@ -9,7 +9,8 @@ describe('ConsentMiddleware', () => {
 
   beforeEach(() => {
     mockConsentService = {
-      checkConsentForResource: vi.fn(),
+      check: vi.fn(),
+      checkConsentForResource: vi.fn(), // Keep for backwards compatibility
     } as any;
     consentMiddleware = new ConsentMiddleware(mockConsentService);
   });
@@ -23,22 +24,7 @@ describe('ConsentMiddleware', () => {
       const middleware = consentMiddleware.requireConsent(['accounts:read']);
 
       await expect(middleware(mockRequest)).rejects.toThrow(ForbiddenError);
-      await expect(middleware(mockRequest)).rejects.toThrow('Authentication required for consent check');
-    });
-
-    it('should throw error if accountId is missing from params', async () => {
-      const mockRequest = {
-        user: {
-          userId: 'user-123',
-          payload: { client_id: 'client-456' },
-        },
-        params: {},
-      } as any;
-
-      const middleware = consentMiddleware.requireConsent(['accounts:read']);
-
-      await expect(middleware(mockRequest)).rejects.toThrow(ForbiddenError);
-      await expect(middleware(mockRequest)).rejects.toThrow('Account ID required for consent verification');
+      await expect(middleware(mockRequest)).rejects.toThrow('Consent denied: authentication_required');
     });
 
     it('should throw error if clientId is missing from token', async () => {
@@ -53,7 +39,7 @@ describe('ConsentMiddleware', () => {
       const middleware = consentMiddleware.requireConsent(['accounts:read']);
 
       await expect(middleware(mockRequest)).rejects.toThrow(ForbiddenError);
-      await expect(middleware(mockRequest)).rejects.toThrow('Client ID not found in token for consent verification');
+      await expect(middleware(mockRequest)).rejects.toThrow('Consent denied: client_id_missing');
     });
 
     it('should throw error if no valid consent found', async () => {
@@ -65,19 +51,15 @@ describe('ConsentMiddleware', () => {
         params: { accountId: 'acc-001' },
       } as any;
 
-      vi.mocked(mockConsentService.checkConsentForResource).mockResolvedValue(false);
+      vi.mocked(mockConsentService.check).mockResolvedValue({
+        allow: false,
+        reasons: ['no_consent'],
+      });
 
       const middleware = consentMiddleware.requireConsent(['accounts:read']);
 
       await expect(middleware(mockRequest)).rejects.toThrow(ForbiddenError);
-      await expect(middleware(mockRequest)).rejects.toThrow('No valid consent found for requested resource');
-
-      expect(mockConsentService.checkConsentForResource).toHaveBeenCalledWith(
-        'user-123',
-        'client-456',
-        'acc-001',
-        ['accounts:read']
-      );
+      await expect(middleware(mockRequest)).rejects.toThrow('Consent denied: no_consent');
     });
 
     it('should pass if valid consent found', async () => {
@@ -89,18 +71,22 @@ describe('ConsentMiddleware', () => {
         params: { accountId: 'acc-001' },
       } as any;
 
-      vi.mocked(mockConsentService.checkConsentForResource).mockResolvedValue(true);
+      vi.mocked(mockConsentService.check).mockResolvedValue({
+        allow: true,
+        consentId: 'consent-123',
+        expiresAt: '2024-12-31T23:59:59.000Z',
+      });
 
       const middleware = consentMiddleware.requireConsent(['accounts:read']);
 
       await expect(middleware(mockRequest)).resolves.toBeUndefined();
 
-      expect(mockConsentService.checkConsentForResource).toHaveBeenCalledWith(
-        'user-123',
-        'client-456',
-        'acc-001',
-        ['accounts:read']
-      );
+      expect(mockConsentService.check).toHaveBeenCalledWith({
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        scopes: ['accounts:read'],
+        accountIds: ['acc-001'],
+      });
     });
 
     it('should use azp from token if client_id is not available', async () => {
@@ -112,18 +98,22 @@ describe('ConsentMiddleware', () => {
         params: { accountId: 'acc-001' },
       } as any;
 
-      vi.mocked(mockConsentService.checkConsentForResource).mockResolvedValue(true);
+      vi.mocked(mockConsentService.check).mockResolvedValue({
+        allow: true,
+        consentId: 'consent-123',
+        expiresAt: '2024-12-31T23:59:59.000Z',
+      });
 
       const middleware = consentMiddleware.requireConsent(['accounts:read']);
 
       await expect(middleware(mockRequest)).resolves.toBeUndefined();
 
-      expect(mockConsentService.checkConsentForResource).toHaveBeenCalledWith(
-        'user-123',
-        'client-789',
-        'acc-001',
-        ['accounts:read']
-      );
+      expect(mockConsentService.check).toHaveBeenCalledWith({
+        subjectId: 'user-123',
+        clientId: 'client-789',
+        scopes: ['accounts:read'],
+        accountIds: ['acc-001'],
+      });
     });
 
     it('should use aud from token if client_id and azp are not available', async () => {
@@ -135,18 +125,49 @@ describe('ConsentMiddleware', () => {
         params: { accountId: 'acc-001' },
       } as any;
 
-      vi.mocked(mockConsentService.checkConsentForResource).mockResolvedValue(true);
+      vi.mocked(mockConsentService.check).mockResolvedValue({
+        allow: true,
+        consentId: 'consent-123',
+        expiresAt: '2024-12-31T23:59:59.000Z',
+      });
 
       const middleware = consentMiddleware.requireConsent(['accounts:read']);
 
       await expect(middleware(mockRequest)).resolves.toBeUndefined();
 
-      expect(mockConsentService.checkConsentForResource).toHaveBeenCalledWith(
-        'user-123',
-        'client-999',
-        'acc-001',
-        ['accounts:read']
-      );
+      expect(mockConsentService.check).toHaveBeenCalledWith({
+        subjectId: 'user-123',
+        clientId: 'client-999',
+        scopes: ['accounts:read'],
+        accountIds: ['acc-001'],
+      });
+    });
+
+    it('should store filtered account IDs and consent info in request', async () => {
+      const mockRequest = {
+        user: {
+          userId: 'user-123',
+          payload: { client_id: 'client-456' },
+        },
+        params: { accountId: 'acc-001' },
+      } as any;
+
+      vi.mocked(mockConsentService.check).mockResolvedValue({
+        allow: true,
+        consentId: 'consent-123',
+        expiresAt: '2024-12-31T23:59:59.000Z',
+        filteredAccountIds: ['acc-001'],
+      });
+
+      const middleware = consentMiddleware.requireConsent(['accounts:read']);
+
+      await middleware(mockRequest);
+
+      expect((mockRequest as any).consentFilteredAccountIds).toEqual(['acc-001']);
+      expect((mockRequest as any).consentInfo).toEqual({
+        consentId: 'consent-123',
+        expiresAt: '2024-12-31T23:59:59.000Z',
+      });
     });
   });
 });

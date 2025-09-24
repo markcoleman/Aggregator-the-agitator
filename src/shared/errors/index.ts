@@ -17,8 +17,16 @@ export class UnauthorizedError extends FdxError {
 }
 
 export class ForbiddenError extends FdxError {
-  constructor(message = 'Insufficient permissions') {
-    super('FORBIDDEN', message, 403);
+  constructor(
+    message = 'Insufficient permissions',
+    options?: { code?: string; details?: string | string[] },
+  ) {
+    super(
+      options?.code || 'FORBIDDEN',
+      message,
+      403,
+      typeof options?.details === 'string' ? options.details : options?.details?.join(', '),
+    );
   }
 }
 

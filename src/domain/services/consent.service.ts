@@ -5,6 +5,8 @@ import {
   UpdateConsentRequest,
   CreateConsentResponse,
   AuditEntry,
+  ConsentCheckInput,
+  ConsentCheckResult,
 } from '../entities/consent.js';
 import { ConsentRepository } from '../../infra/repositories/consent.repo.mock.js';
 import { ValidationError, ForbiddenError, ConflictError } from '../../shared/errors/index.js';
@@ -122,47 +124,201 @@ export class ConsentService {
     return consent;
   }
 
+  /**
+   * Check consent for resource access with detailed result
+   * This is the main introspection function for FDX enforcement
+   */
+  async check(input: ConsentCheckInput): Promise<ConsentCheckResult> {
+    try {
+      // Validate input parameters
+      if (!input.subjectId || !input.clientId || !input.scopes?.length) {
+        return {
+          allow: false,
+          reasons: ['invalid_input'],
+        };
+      }
+
+      // Find consents for the subject
+      const consents = await this.consentRepository.findBySubjectId(input.subjectId);
+
+      if (consents.length === 0) {
+        return {
+          allow: false,
+          reasons: ['no_consent'],
+        };
+      }
+
+      // Find the best matching consent
+      for (const consent of consents) {
+        // Check client binding
+        if (consent.clientId !== input.clientId) {
+          continue;
+        }
+
+        // Check consent status
+        if (consent.status !== 'ACTIVE') {
+          continue;
+        }
+
+        // Check expiry
+        const checkTime = input.asOf ? new Date(input.asOf) : new Date();
+        if (checkTime > new Date(consent.expiresAt)) {
+          await this.expireConsent(consent);
+          continue;
+        }
+
+        // Check scopes - requested scopes must be subset of consent scopes
+        const missingScopes = input.scopes.filter(
+          scope => !consent.dataScopes.includes(scope as any),
+        );
+
+        if (missingScopes.length > 0) {
+          continue;
+        }
+
+        // Check account scoping if accountIds provided
+        let filteredAccountIds: string[] | undefined;
+        if (input.accountIds && input.accountIds.length > 0) {
+          filteredAccountIds = input.accountIds.filter(accountId =>
+            consent.accountIds.includes(accountId),
+          );
+
+          if (filteredAccountIds.length === 0) {
+            continue;
+          }
+        }
+
+        // Log access decision for audit
+        await this.logConsentCheck(consent, input, true, filteredAccountIds);
+
+        return {
+          allow: true,
+          consentId: consent.id,
+          expiresAt: consent.expiresAt,
+          filteredAccountIds,
+        };
+      }
+
+      // Log denial for audit
+      await this.logConsentCheck(null, input, false);
+
+      // Determine the most specific reason for denial
+      const activeConsents = consents.filter(
+        c => c.clientId === input.clientId && c.status === 'ACTIVE',
+      );
+      if (activeConsents.length === 0) {
+        const clientConsents = consents.filter(c => c.clientId === input.clientId);
+        if (clientConsents.length === 0) {
+          return {
+            allow: false,
+            reasons: ['client_mismatch'],
+          };
+        } else {
+          const statuses = clientConsents.map(c => c.status);
+          if (statuses.includes('EXPIRED')) {
+            return {
+              allow: false,
+              reasons: ['expired'],
+            };
+          } else if (statuses.includes('REVOKED')) {
+            return {
+              allow: false,
+              reasons: ['revoked'],
+            };
+          } else if (statuses.includes('SUSPENDED')) {
+            return {
+              allow: false,
+              reasons: ['suspended'],
+            };
+          } else {
+            return {
+              allow: false,
+              reasons: ['not_active'],
+            };
+          }
+        }
+      }
+
+      // Check if it's a scope issue
+      const scopeMatches = activeConsents.some(consent =>
+        input.scopes.every(scope => consent.dataScopes.includes(scope as any)),
+      );
+
+      if (!scopeMatches) {
+        return {
+          allow: false,
+          reasons: ['missing_scope'],
+        };
+      }
+
+      // Must be account scoping issue
+      return {
+        allow: false,
+        reasons: ['not_account_scoped'],
+      };
+    } catch (error) {
+      // Log error for debugging but don't expose details
+      console.error('Consent check error:', error);
+
+      await this.logConsentCheck(null, input, false, undefined, 'system_error');
+
+      return {
+        allow: false,
+        reasons: ['system_error'],
+      };
+    }
+  }
+
+  private async logConsentCheck(
+    consent: Consent | null,
+    input: ConsentCheckInput,
+    allowed: boolean,
+    filteredAccountIds?: string[],
+    errorReason?: string,
+  ): Promise<void> {
+    // Create audit entry for the consent check
+    const auditEntry: AuditEntry = {
+      timestamp: new Date().toISOString(),
+      action: 'consent.check',
+      actor: input.subjectId,
+      actorType: 'subject',
+      reason: allowed ? 'access_granted' : errorReason || 'access_denied',
+    };
+
+    // If we have a consent, add the audit entry to it
+    if (consent) {
+      await this.consentRepository.addAuditEntry(consent.id, auditEntry);
+    }
+
+    // TODO: Add structured logging with correlation ID
+    // This would typically go to a separate audit log service
+    console.log('Consent check:', {
+      subjectId: input.subjectId,
+      clientId: input.clientId,
+      scopes: input.scopes,
+      accountIds: input.accountIds,
+      allowed,
+      consentId: consent?.id,
+      filteredAccountIds,
+      timestamp: auditEntry.timestamp,
+    });
+  }
+
   async checkConsentForResource(
     subjectId: string,
     clientId: string,
     accountId: string,
     requiredScopes: string[],
   ): Promise<boolean> {
-    try {
-      const consents = await this.consentRepository.findBySubjectId(subjectId);
+    // Delegate to the new check method for backwards compatibility
+    const result = await this.check({
+      subjectId,
+      clientId,
+      scopes: requiredScopes,
+      accountIds: [accountId],
+    });
 
-      for (const consent of consents) {
-        // Check if consent matches client and is active
-        if (consent.clientId !== clientId || consent.status !== 'ACTIVE') {
-          continue;
-        }
-
-        // Check if consent has expired
-        if (new Date() > new Date(consent.expiresAt)) {
-          await this.expireConsent(consent);
-          continue;
-        }
-
-        // Check if consent covers the required account
-        if (!consent.accountIds.includes(accountId)) {
-          continue;
-        }
-
-        // Check if consent has all required scopes
-        const hasAllScopes = requiredScopes.every(scope =>
-          consent.dataScopes.includes(scope as any),
-        );
-
-        if (hasAllScopes) {
-          return true;
-        }
-      }
-
-      return false;
-    } catch (error) {
-      // If there's an error checking consent, deny access
-      return false;
-    }
+    return result.allow;
   }
 
   private async expireConsent(consent: Consent): Promise<void> {
