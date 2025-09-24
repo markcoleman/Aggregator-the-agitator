@@ -6,6 +6,7 @@ import swaggerUi from '@fastify/swagger-ui';
 
 import { appConfig } from './config/index.js';
 import { AuthMiddleware } from './http/middleware/authz.js';
+import { ConsentMiddleware } from './http/middleware/consent.js';
 
 // Controllers
 import { AccountsController } from './http/controllers/accounts.controller.js';
@@ -13,6 +14,7 @@ import { TransactionsController } from './http/controllers/transactions.controll
 import { ContactController } from './http/controllers/contact.controller.js';
 import { PaymentNetworksController } from './http/controllers/payment-networks.controller.js';
 import { StatementsController } from './http/controllers/statements.controller.js';
+import { ConsentController } from './http/controllers/consent.controller.js';
 
 // Services
 import { AccountsService } from './domain/services/accounts.service.js';
@@ -20,6 +22,7 @@ import { TransactionsService } from './domain/services/transactions.service.js';
 import { ContactService } from './domain/services/contact.service.js';
 import { PaymentNetworksService } from './domain/services/payment-networks.service.js';
 import { StatementsService } from './domain/services/statements.service.js';
+import { ConsentService } from './domain/services/consent.service.js';
 
 // Repositories
 import { MockAccountRepository } from './infra/repositories/accounts.repo.mock.js';
@@ -27,6 +30,7 @@ import { MockTransactionRepository } from './infra/repositories/transactions.rep
 import { MockContactRepository } from './infra/repositories/contact.repo.mock.js';
 import { MockPaymentNetworkRepository } from './infra/repositories/payment-networks.repo.mock.js';
 import { MockStatementRepository } from './infra/repositories/statements.repo.mock.js';
+import { MockConsentRepository } from './infra/repositories/consent.repo.mock.js';
 
 export async function createApp(): Promise<FastifyInstance> {
   const fastify = Fastify({
@@ -93,6 +97,10 @@ export async function createApp(): Promise<FastifyInstance> {
   const contactRepository = new MockContactRepository();
   const paymentNetworkRepository = new MockPaymentNetworkRepository();
   const statementRepository = new MockStatementRepository();
+  const consentRepository = new MockConsentRepository();
+
+  // Seed consent repository with test data
+  consentRepository.seedTestData();
 
   // Services
   const accountsService = new AccountsService(accountRepository);
@@ -103,6 +111,14 @@ export async function createApp(): Promise<FastifyInstance> {
     accountRepository,
   );
   const statementsService = new StatementsService(statementRepository, accountRepository);
+  const consentService = new ConsentService(consentRepository);
+
+  // Initialize middleware that depends on services
+  const consentMiddleware = new ConsentMiddleware(consentService);
+  
+  // TODO: Use consentMiddleware in resource routes - currently prepared for integration
+  // Temporary reference to avoid unused variable warning
+  void consentMiddleware;
 
   // Controllers
   const accountsController = new AccountsController(accountsService);
@@ -110,12 +126,33 @@ export async function createApp(): Promise<FastifyInstance> {
   const contactController = new ContactController(contactService);
   const paymentNetworksController = new PaymentNetworksController(paymentNetworksService);
   const statementsController = new StatementsController(statementsService);
+  const consentController = new ConsentController(consentService);
 
   // Health check endpoint
   fastify.get('/health', async () => ({
     status: 'ok',
     timestamp: new Date().toISOString(),
   }));
+
+  // Consent API routes (not under /fdx/v6)
+  fastify.register(async function (fastify) {
+    // Auth middleware for consent routes
+    fastify.addHook('preHandler', authMiddleware.authenticate.bind(authMiddleware));
+
+    // Consent routes
+    fastify.post('/consent', {
+      preHandler: [authMiddleware.requireScope('consent:write')],
+      handler: consentController.createConsent.bind(consentController),
+    });
+
+    fastify.put('/consent/:consentId', {
+      handler: consentController.updateConsent.bind(consentController),
+    });
+
+    fastify.get('/consent/:consentId', {
+      handler: consentController.getConsent.bind(consentController),
+    });
+  });
 
   // Register routes with authentication
   fastify.register(async function (fastify) {

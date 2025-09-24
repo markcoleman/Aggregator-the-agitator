@@ -33,3 +33,9 @@ export class ValidationError extends FdxError {
     super('VALIDATION_ERROR', message, 400, details);
   }
 }
+
+export class ConflictError extends FdxError {
+  constructor(message = 'Request conflicts with current state') {
+    super('CONFLICT', message, 409);
+  }
+}
