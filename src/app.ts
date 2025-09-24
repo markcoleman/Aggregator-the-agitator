@@ -37,13 +37,14 @@ export async function createApp(): Promise<FastifyInstance> {
     logger: {
       level: appConfig.logging.level,
     },
+    bodyLimit: 100 * 1024, // 100KB limit to test large payload handling
   });
 
   // Register plugins
   await fastify.register(helmet, { contentSecurityPolicy: false });
   await fastify.register(cors, {
-    origin: true,
-    credentials: true,
+    origin: '*',
+    credentials: false,
   });
 
   // Register OpenAPI documentation

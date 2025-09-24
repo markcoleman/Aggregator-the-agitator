@@ -35,6 +35,9 @@ export class MockConsentRepository implements ConsentRepository {
 
   async addAuditEntry(id: string, auditEntry: AuditEntry): Promise<void> {
     const consent = await this.findById(id);
+    if (!consent) {
+      throw new Error(`Consent not found: ${id}`);
+    }
     consent.auditTrail.push(auditEntry);
     this.consents.set(id, consent);
   }

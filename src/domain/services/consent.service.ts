@@ -164,6 +164,7 @@ export class ConsentService {
         const checkTime = input.asOf ? new Date(input.asOf) : new Date();
         if (checkTime > new Date(consent.expiresAt)) {
           await this.expireConsent(consent);
+          consent.status = 'EXPIRED'; // Update local object to reflect the change
           continue;
         }
 
