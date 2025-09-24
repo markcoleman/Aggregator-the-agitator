@@ -4,8 +4,7 @@
  * Provides JWKS endpoint and basic OAuth-like functionality for development
  */
 
-const http = require('http');
-const crypto = require('crypto');
+import http from 'http';
 
 const PORT = process.env.PORT || 3000;
 
@@ -80,7 +79,10 @@ const server = http.createServer((req, res) => {
   const url = req.url;
   const method = req.method;
   
-  console.log(`${new Date().toISOString()} - ${method} ${url}`);
+  // Sanitize and log request
+  const sanitizedMethod = method?.replace(/[^\w-]/g, '') || 'UNKNOWN';
+  const sanitizedUrl = url?.replace(/[^\w\-\/.?=&]/g, '') || '/unknown';
+  console.log(`${new Date().toISOString()} - ${sanitizedMethod} ${sanitizedUrl}`);
   
   // Handle CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -93,9 +95,9 @@ const server = http.createServer((req, res) => {
     return;
   }
   
-  // Route handling
+  // Route handling with validation
   const route = routes[url];
-  if (route) {
+  if (route && typeof route === 'function') {
     const response = route();
     res.writeHead(response.status, response.headers);
     res.end(response.body);
