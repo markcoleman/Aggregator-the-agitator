@@ -12,9 +12,41 @@ import { ConsentRepository } from '../../infra/repositories/consent.repo.mock.js
 import { ValidationError, ForbiddenError, ConflictError } from '../../shared/errors/index.js';
 import { randomUUID } from 'crypto';
 
+/**
+ * Service for managing consent lifecycle and authorization checks.
+ * Implements FDX consent management patterns with comprehensive audit trails.
+ *
+ * @example
+ * ```typescript
+ * const consentService = new ConsentService(consentRepository);
+ *
+ * // Create new consent
+ * const consent = await consentService.createConsent({
+ *   subjectId: 'user-123',
+ *   dataScopes: ['accounts:read'],
+ *   accountIds: ['acc-001']
+ * }, 'client-456');
+ *
+ * // Check authorization
+ * const result = await consentService.check({
+ *   subjectId: 'user-123',
+ *   clientId: 'client-456',
+ *   scopes: ['accounts:read'],
+ *   accountIds: ['acc-001']
+ * });
+ * ```
+ */
 export class ConsentService {
   constructor(private consentRepository: ConsentRepository) {}
 
+  /**
+   * Creates a new consent request in PENDING status.
+   *
+   * @param request - The consent creation request with scope and account details
+   * @param clientId - The client ID making the request
+   * @returns Promise resolving to the created consent response
+   * @throws {ValidationError} When request data is invalid
+   */
   async createConsent(
     request: CreateConsentRequest,
     clientId: string,
@@ -63,6 +95,18 @@ export class ConsentService {
     };
   }
 
+  /**
+   * Updates consent status through approved state transitions.
+   * Validates actor permissions and handles consent lifecycle management.
+   *
+   * @param consentId - The ID of the consent to update
+   * @param request - The update request with action and optional reason
+   * @param actorId - The ID of the actor performing the update
+   * @param actorType - The type of actor (subject, client, or admin)
+   * @returns Promise resolving to the updated consent
+   * @throws {ForbiddenError} When actor lacks permission for the action
+   * @throws {ConflictError} When consent is expired or invalid state transition
+   */
   async updateConsent(
     consentId: string,
     request: UpdateConsentRequest,
@@ -106,6 +150,16 @@ export class ConsentService {
     return updatedConsent;
   }
 
+  /**
+   * Retrieves a consent by ID with access control validation.
+   * Automatically expires consent if past expiration date.
+   *
+   * @param consentId - The ID of the consent to retrieve
+   * @param requesterId - The ID of the requester
+   * @param requesterType - The type of requester (subject, client, or admin)
+   * @returns Promise resolving to the consent
+   * @throws {ForbiddenError} When requester lacks access to the consent
+   */
   async getConsent(
     consentId: string,
     requesterId: string,

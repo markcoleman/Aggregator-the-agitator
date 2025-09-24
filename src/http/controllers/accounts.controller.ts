@@ -12,9 +12,19 @@ const GetAccountParamsSchema = z.object({
   accountId: z.string(),
 });
 
+/**
+ * Controller for FDX accounts endpoints.
+ * Handles HTTP request/response for account-related operations.
+ */
 export class AccountsController {
   constructor(private accountsService: AccountsService) {}
 
+  /**
+   * GET /accounts - Retrieve user accounts with pagination.
+   *
+   * @param request - Fastify request with query params for pagination
+   * @param reply - Fastify reply object
+   */
   async getAccounts(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     try {
       const query = GetAccountsQuerySchema.parse(request.query);

@@ -5,6 +5,7 @@ import {
   ForbiddenError,
   NotFoundError,
   ValidationError,
+  ConflictError,
 } from '../../src/shared/errors/index.js';
 
 describe('Error Classes', () => {
@@ -97,6 +98,24 @@ describe('Error Classes', () => {
       expect(error.message).toBe('Custom validation message');
       expect(error.details).toBe('Field is required');
       expect(error.statusCode).toBe(400);
+    });
+  });
+
+  describe('ConflictError', () => {
+    it('should create 409 error with default message', () => {
+      const error = new ConflictError();
+
+      expect(error.name).toBe('FdxError');
+      expect(error.code).toBe('CONFLICT');
+      expect(error.message).toBe('Request conflicts with current state');
+      expect(error.statusCode).toBe(409);
+    });
+
+    it('should create 409 error with custom message', () => {
+      const error = new ConflictError('Custom conflict message');
+
+      expect(error.message).toBe('Custom conflict message');
+      expect(error.statusCode).toBe(409);
     });
   });
 });
