@@ -1,0 +1,606 @@
+openapi: 3.0.3
+info:
+  title: FDX Resource API
+  description: FDX-aligned REST API for financial data aggregation
+  version: 6.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.example.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /fdx/v6/accounts:
+    get:
+      summary: Get all accounts
+      description: Retrieve a paginated list of accounts for the consented user
+      operationId: getAccounts
+      tags:
+        - Accounts
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of accounts to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          description: Number of accounts to skip for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /fdx/v6/accounts/{accountId}:
+    get:
+      summary: Get account details
+      description: Retrieve detailed information for a specific account
+      operationId: getAccountById
+      tags:
+        - Accounts
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Unique identifier for the account
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /fdx/v6/accounts/{accountId}/transactions:
+    get:
+      summary: Get account transactions
+      description: Retrieve transactions for a specific account with filtering and pagination
+      operationId: getTransactions
+      tags:
+        - Transactions
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Unique identifier for the account
+          schema:
+            type: string
+        - name: fromDate
+          in: query
+          description: Start date for transaction filtering (ISO 8601)
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          description: End date for transaction filtering (ISO 8601)
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          description: Maximum number of transactions to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          description: Number of transactions to skip for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /fdx/v6/accounts/{accountId}/contact:
+    get:
+      summary: Get account contact information
+      description: Retrieve contact details for the account holder
+      operationId: getAccountContact
+      tags:
+        - Contact
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Unique identifier for the account
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /fdx/v6/accounts/{accountId}/payment-networks:
+    get:
+      summary: Get payment network information
+      description: Retrieve payment network details for the account
+      operationId: getPaymentNetworks
+      tags:
+        - Payment Networks
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Unique identifier for the account
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentNetworksResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /fdx/v6/accounts/{accountId}/statements:
+    get:
+      summary: Get account statements
+      description: Retrieve a list of statements for the account
+      operationId: getStatements
+      tags:
+        - Statements
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Unique identifier for the account
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of statements to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          description: Number of statements to skip for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /fdx/v6/accounts/{accountId}/statements/{statementId}:
+    get:
+      summary: Get statement details
+      description: Retrieve detailed information for a specific statement
+      operationId: getStatementById
+      tags:
+        - Statements
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Unique identifier for the account
+          schema:
+            type: string
+        - name: statementId
+          in: path
+          required: true
+          description: Unique identifier for the statement
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statement'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Account:
+      type: object
+      required:
+        - accountId
+        - accountType
+        - accountNumber
+        - accountName
+        - status
+        - balance
+      properties:
+        accountId:
+          type: string
+          description: Unique identifier for the account
+        accountType:
+          type: string
+          enum: [CHECKING, SAVINGS, CREDIT_CARD, LOAN, INVESTMENT]
+          description: Type of account
+        accountNumber:
+          type: string
+          description: Account number (masked for security)
+        accountName:
+          type: string
+          description: Display name of the account
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, CLOSED]
+          description: Current status of the account
+        balance:
+          $ref: '#/components/schemas/Amount'
+        availableBalance:
+          $ref: '#/components/schemas/Amount'
+        openedDate:
+          type: string
+          format: date
+          description: Date the account was opened
+
+    AccountsResponse:
+      type: object
+      required:
+        - accounts
+        - pagination
+      properties:
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    Transaction:
+      type: object
+      required:
+        - transactionId
+        - accountId
+        - amount
+        - description
+        - transactionDate
+        - status
+      properties:
+        transactionId:
+          type: string
+          description: Unique identifier for the transaction
+        accountId:
+          type: string
+          description: Account identifier
+        amount:
+          $ref: '#/components/schemas/Amount'
+        description:
+          type: string
+          description: Transaction description
+        merchantName:
+          type: string
+          description: Name of the merchant
+        transactionDate:
+          type: string
+          format: date-time
+          description: Date and time of the transaction
+        postedDate:
+          type: string
+          format: date-time
+          description: Date and time the transaction was posted
+        status:
+          type: string
+          enum: [PENDING, POSTED, CANCELLED]
+          description: Transaction status
+        category:
+          type: string
+          description: Transaction category
+
+    TransactionsResponse:
+      type: object
+      required:
+        - transactions
+        - pagination
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    Contact:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Full name of the account holder
+        emailAddress:
+          type: string
+          format: email
+          description: Primary email address
+        phoneNumber:
+          type: string
+          description: Primary phone number
+        address:
+          $ref: '#/components/schemas/Address'
+
+    Address:
+      type: object
+      properties:
+        line1:
+          type: string
+          description: First line of the address
+        line2:
+          type: string
+          description: Second line of the address
+        city:
+          type: string
+          description: City
+        state:
+          type: string
+          description: State or province
+        postalCode:
+          type: string
+          description: Postal or ZIP code
+        country:
+          type: string
+          description: Country code (ISO 3166-1 alpha-2)
+
+    PaymentNetwork:
+      type: object
+      required:
+        - networkId
+        - networkName
+        - accountNumber
+      properties:
+        networkId:
+          type: string
+          description: Unique identifier for the payment network
+        networkName:
+          type: string
+          description: Name of the payment network
+        accountNumber:
+          type: string
+          description: Account number within the payment network
+        routingNumber:
+          type: string
+          description: Routing number for the network
+
+    PaymentNetworksResponse:
+      type: object
+      required:
+        - paymentNetworks
+      properties:
+        paymentNetworks:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentNetwork'
+
+    Statement:
+      type: object
+      required:
+        - statementId
+        - accountId
+        - statementDate
+        - status
+      properties:
+        statementId:
+          type: string
+          description: Unique identifier for the statement
+        accountId:
+          type: string
+          description: Account identifier
+        statementDate:
+          type: string
+          format: date
+          description: Date of the statement
+        status:
+          type: string
+          enum: [AVAILABLE, PROCESSING, UNAVAILABLE]
+          description: Statement status
+        beginDate:
+          type: string
+          format: date
+          description: Start date of the statement period
+        endDate:
+          type: string
+          format: date
+          description: End date of the statement period
+        downloadUrl:
+          type: string
+          format: uri
+          description: URL to download the statement
+
+    StatementsResponse:
+      type: object
+      required:
+        - statements
+        - pagination
+      properties:
+        statements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Statement'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    Amount:
+      type: object
+      required:
+        - amount
+        - currency
+      properties:
+        amount:
+          type: number
+          format: double
+          description: Monetary amount
+        currency:
+          type: string
+          description: Currency code (ISO 4217)
+          example: USD
+
+    Pagination:
+      type: object
+      required:
+        - totalCount
+        - offset
+        - limit
+      properties:
+        totalCount:
+          type: integer
+          description: Total number of items available
+        offset:
+          type: integer
+          description: Number of items skipped
+        limit:
+          type: integer
+          description: Maximum number of items in this response
+        hasMore:
+          type: boolean
+          description: Whether there are more items available
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: string
+          description: Additional error details
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: UNAUTHORIZED
+            message: Authentication required
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: FORBIDDEN
+            message: Insufficient permissions for this resource
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: NOT_FOUND
+            message: The requested resource was not found
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: INTERNAL_ERROR
+            message: An unexpected error occurred
