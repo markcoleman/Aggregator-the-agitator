@@ -73,6 +73,22 @@ All FDX endpoints require authentication via `Authorization: Bearer <JWT>` heade
 - `GET /fdx/v6/accounts/{accountId}/statements` - List statements
 - `GET /fdx/v6/accounts/{accountId}/statements/{statementId}` - Get statement details
 
+### Consent API
+
+The Consent API manages user consent for data sharing according to the Mastercard FDX guide:
+
+- `POST /consent` - Create a new consent request
+- `GET /consent/{consentId}` - Retrieve consent details  
+- `PUT /consent/{consentId}` - Update consent status (approve/suspend/resume/revoke)
+
+#### Consent Lifecycle
+
+1. **PENDING** → Client creates consent via POST /consent
+2. **ACTIVE** → Subject approves consent via PUT /consent/{id} with action="approve"  
+3. **SUSPENDED** ↔ **ACTIVE** → Admin can suspend/resume via PUT /consent/{id}
+4. **REVOKED** → Subject, client, or admin can revoke (terminal state)
+5. **EXPIRED** → System expires consent when expiry date reached (terminal state)
+
 ### Health Check
 
 - `GET /health` - Service health status
@@ -168,6 +184,42 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      "http://localhost:3000/fdx/v6/accounts/acc-001/transactions?fromDate=2024-01-01&toDate=2024-01-31&limit=10"
+```
+
+### Consent API Examples
+
+#### Create Consent
+
+```bash
+curl -X POST \
+     -H "Authorization: Bearer CLIENT_JWT_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "subjectId": "user-123",
+       "clientId": "my-app",
+       "dataScopes": ["accounts:read", "transactions:read"],
+       "accountIds": ["acc-001", "acc-002"],
+       "purpose": "Personal finance management",
+       "expiry": "2025-12-31T23:59:59.999Z"
+     }' \
+     http://localhost:3000/consent
+```
+
+#### Approve Consent (as subject)
+
+```bash
+curl -X PUT \
+     -H "Authorization: Bearer USER_JWT_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"action": "approve", "reason": "User approved access"}' \
+     http://localhost:3000/consent/consent-123
+```
+
+#### Get Consent Details
+
+```bash
+curl -H "Authorization: Bearer USER_JWT_TOKEN" \
+     http://localhost:3000/consent/consent-123
 ```
 
 ### Response Format

@@ -285,6 +285,108 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /consent:
+    post:
+      summary: Create consent
+      description: Register a new consent request that allows a client to access specified account data
+      operationId: createConsent
+      tags:
+        - Consent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConsentRequest'
+      responses:
+        '201':
+          description: Consent created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateConsentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /consent/{consentId}:
+    get:
+      summary: Get consent details
+      description: Retrieve details of a specific consent
+      operationId: getConsent
+      tags:
+        - Consent
+      parameters:
+        - name: consentId
+          in: path
+          required: true
+          description: Unique identifier for the consent
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Consent details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    put:
+      summary: Update consent
+      description: Update consent status (approve, suspend, resume, revoke)
+      operationId: updateConsent
+      tags:
+        - Consent
+      parameters:
+        - name: consentId
+          in: path
+          required: true
+          description: Unique identifier for the consent
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateConsentRequest'
+      responses:
+        '200':
+          description: Consent updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict - Invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
   securitySchemes:
     BearerAuth:
@@ -547,6 +649,237 @@ components:
         hasMore:
           type: boolean
           description: Whether there are more items available
+
+    CreateConsentRequest:
+      type: object
+      required:
+        - subjectId
+        - clientId
+        - dataScopes
+        - accountIds
+        - purpose
+        - expiry
+      properties:
+        subjectId:
+          type: string
+          description: ID of the data subject (end user)
+        clientId:
+          type: string
+          description: ID of the requesting client application
+        dataScopes:
+          type: array
+          items:
+            type: string
+            enum:
+              - accounts:read
+              - transactions:read
+              - contact:read
+              - payment_networks:read
+              - statements:read
+          description: Requested data scopes
+          minItems: 1
+        accountIds:
+          type: array
+          items:
+            type: string
+          description: Account IDs to grant access to
+          minItems: 1
+        purpose:
+          type: string
+          description: Purpose of the data access request
+          minLength: 1
+        expiry:
+          type: string
+          format: date-time
+          description: Consent expiration date (ISO 8601)
+
+    CreateConsentResponse:
+      type: object
+      required:
+        - id
+        - status
+        - subjectId
+        - clientId
+        - dataScopes
+        - accountIds
+        - purpose
+        - createdAt
+        - expiresAt
+      properties:
+        id:
+          type: string
+          description: Unique consent identifier
+        status:
+          type: string
+          enum: [PENDING]
+          description: Initial consent status
+        subjectId:
+          type: string
+          description: ID of the data subject
+        clientId:
+          type: string
+          description: ID of the requesting client
+        dataScopes:
+          type: array
+          items:
+            type: string
+            enum:
+              - accounts:read
+              - transactions:read
+              - contact:read
+              - payment_networks:read
+              - statements:read
+          description: Approved data scopes
+        accountIds:
+          type: array
+          items:
+            type: string
+          description: Account IDs granted access to
+        purpose:
+          type: string
+          description: Purpose of the data access
+        createdAt:
+          type: string
+          format: date-time
+          description: Consent creation timestamp
+        expiresAt:
+          type: string
+          format: date-time
+          description: Consent expiration timestamp
+
+    UpdateConsentRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum:
+            - approve
+            - suspend
+            - resume
+            - revoke
+          description: Action to perform on the consent
+        reason:
+          type: string
+          description: Optional reason for the action
+
+    Consent:
+      type: object
+      required:
+        - id
+        - subjectId
+        - clientId
+        - dataScopes
+        - accountIds
+        - purpose
+        - status
+        - createdAt
+        - updatedAt
+        - expiresAt
+        - auditTrail
+      properties:
+        id:
+          type: string
+          description: Unique consent identifier
+        subjectId:
+          type: string
+          description: ID of the data subject
+        clientId:
+          type: string
+          description: ID of the requesting client
+        dataScopes:
+          type: array
+          items:
+            type: string
+            enum:
+              - accounts:read
+              - transactions:read
+              - contact:read
+              - payment_networks:read
+              - statements:read
+          description: Approved data scopes
+        accountIds:
+          type: array
+          items:
+            type: string
+          description: Account IDs granted access to
+        purpose:
+          type: string
+          description: Purpose of the data access
+        status:
+          type: string
+          enum:
+            - PENDING
+            - ACTIVE
+            - SUSPENDED
+            - REVOKED
+            - EXPIRED
+          description: Current consent status
+        createdAt:
+          type: string
+          format: date-time
+          description: Consent creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        expiresAt:
+          type: string
+          format: date-time
+          description: Consent expiration timestamp
+        auditTrail:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEntry'
+          description: History of consent changes
+
+    AuditEntry:
+      type: object
+      required:
+        - timestamp
+        - action
+        - actor
+        - actorType
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When the action occurred
+        action:
+          type: string
+          description: Action that was performed
+        actor:
+          type: string
+          description: ID of the actor who performed the action
+        actorType:
+          type: string
+          enum:
+            - subject
+            - client
+            - admin
+          description: Type of actor
+        previousStatus:
+          type: string
+          enum:
+            - PENDING
+            - ACTIVE
+            - SUSPENDED
+            - REVOKED
+            - EXPIRED
+          description: Previous consent status
+        newStatus:
+          type: string
+          enum:
+            - PENDING
+            - ACTIVE
+            - SUSPENDED
+            - REVOKED
+            - EXPIRED
+          description: New consent status
+        reason:
+          type: string
+          description: Optional reason for the action
 
     Error:
       type: object
