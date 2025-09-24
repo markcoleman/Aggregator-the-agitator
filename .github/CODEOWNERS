@@ -1,0 +1,49 @@
+# Global owners - require review for all changes
+* @markcoleman
+
+# API Controllers and routes
+/src/http/ @markcoleman
+/src/app.ts @markcoleman
+
+# Domain logic and services
+/src/domain/ @markcoleman
+
+# Security and authentication
+/src/infra/auth/ @markcoleman
+/src/http/middleware/authz.js @markcoleman
+/src/http/middleware/consent.js @markcoleman
+
+# Configuration and environment
+/src/config/ @markcoleman
+/.env.example @markcoleman
+
+# CI/CD and GitHub workflows
+/.github/ @markcoleman
+/.github/workflows/ @markcoleman
+
+# Documentation
+/README.md @markcoleman
+/docs/ @markcoleman
+/openapi.yaml @markcoleman
+
+# Dependencies and package management
+/package.json @markcoleman
+/pnpm-lock.yaml @markcoleman
+
+# Testing infrastructure
+/test/ @markcoleman
+/vitest.config.ts @markcoleman
+
+# Build and development configuration
+/tsconfig.json @markcoleman
+/.eslintrc.json @markcoleman
+/.prettierrc @markcoleman
+
+# Docker and container configuration
+/Dockerfile @markcoleman
+/.dockerignore @markcoleman
+/.devcontainer/ @markcoleman
+
+# Security files
+/SECURITY.md @markcoleman
+/.github/dependabot.yml @markcoleman
