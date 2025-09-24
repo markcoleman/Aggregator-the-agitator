@@ -47,6 +47,15 @@ export class MockAccountRepository implements AccountRepository {
       balance: { amount: 45230.8, currency: 'USD' },
       openedDate: '2019-11-05',
     },
+    {
+      accountId: 'acc-999',
+      accountType: 'SAVINGS',
+      accountNumber: '****9999',
+      accountName: 'Test Account',
+      status: 'ACTIVE',
+      balance: { amount: 100.0, currency: 'USD' },
+      openedDate: '2024-01-01',
+    },
   ];
 
   async findByUserId(_userId: string, limit: number, offset: number): Promise<AccountsResponse> {
