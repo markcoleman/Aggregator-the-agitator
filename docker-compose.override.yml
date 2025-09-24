@@ -1,0 +1,20 @@
+# Docker Compose override for local development
+# This file is automatically loaded by docker-compose for local development customizations
+version: '3.8'
+
+services:
+  fdx-api:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      # Mount source code for development
+      - ./src:/app/src:ro
+      - ./openapi.yaml:/app/openapi.yaml:ro
+      # Preserve node_modules
+      - node_modules:/app/node_modules
+    # Override command for development
+    command: ["pnpm", "dev"]
+
+volumes:
+  node_modules:
