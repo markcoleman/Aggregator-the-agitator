@@ -13,7 +13,7 @@ export class ConsentMiddleware {
 
       const { userId, payload } = request.user;
       const clientId = payload['client_id'] || payload['azp'] || payload['aud'];
-      
+
       // Extract accountId from request params (assumes path like /fdx/v6/accounts/:accountId/...)
       const params = request.params as any;
       const accountId = params.accountId;
@@ -30,7 +30,7 @@ export class ConsentMiddleware {
         userId,
         clientId as string,
         accountId,
-        requiredScopes
+        requiredScopes,
       );
 
       if (!hasConsent) {

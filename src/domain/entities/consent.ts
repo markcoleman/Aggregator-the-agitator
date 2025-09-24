@@ -1,13 +1,7 @@
 import { z } from 'zod';
 
 // Consent status enum following the state machine requirements
-export const ConsentStatusEnum = z.enum([
-  'PENDING',
-  'ACTIVE', 
-  'SUSPENDED',
-  'REVOKED',
-  'EXPIRED'
-]);
+export const ConsentStatusEnum = z.enum(['PENDING', 'ACTIVE', 'SUSPENDED', 'REVOKED', 'EXPIRED']);
 
 // Data scopes enum for FDX permissions
 export const DataScopeEnum = z.enum([
@@ -15,7 +9,7 @@ export const DataScopeEnum = z.enum([
   'transactions:read',
   'contact:read',
   'payment_networks:read',
-  'statements:read'
+  'statements:read',
 ]);
 
 // Audit entry for tracking consent changes

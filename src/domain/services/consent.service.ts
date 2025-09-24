@@ -1,25 +1,21 @@
-import { 
-  Consent, 
-  ConsentStatus, 
-  CreateConsentRequest, 
+import {
+  Consent,
+  ConsentStatus,
+  CreateConsentRequest,
   UpdateConsentRequest,
   CreateConsentResponse,
-  AuditEntry 
+  AuditEntry,
 } from '../entities/consent.js';
 import { ConsentRepository } from '../../infra/repositories/consent.repo.mock.js';
-import { 
-  ValidationError, 
-  ForbiddenError, 
-  ConflictError 
-} from '../../shared/errors/index.js';
+import { ValidationError, ForbiddenError, ConflictError } from '../../shared/errors/index.js';
 import { randomUUID } from 'crypto';
 
 export class ConsentService {
   constructor(private consentRepository: ConsentRepository) {}
 
   async createConsent(
-    request: CreateConsentRequest, 
-    clientId: string
+    request: CreateConsentRequest,
+    clientId: string,
   ): Promise<CreateConsentResponse> {
     // Validate request data
     this.validateCreateRequest(request);
@@ -39,13 +35,15 @@ export class ConsentService {
       createdAt: now,
       updatedAt: now,
       expiresAt: request.expiry,
-      auditTrail: [{
-        timestamp: now,
-        action: 'consent.created',
-        actor: clientId,
-        actorType: 'client',
-        newStatus: 'PENDING',
-      }],
+      auditTrail: [
+        {
+          timestamp: now,
+          action: 'consent.created',
+          actor: clientId,
+          actorType: 'client',
+          newStatus: 'PENDING',
+        },
+      ],
     };
 
     await this.consentRepository.create(consent);
@@ -67,10 +65,10 @@ export class ConsentService {
     consentId: string,
     request: UpdateConsentRequest,
     actorId: string,
-    actorType: 'subject' | 'client' | 'admin'
+    actorType: 'subject' | 'client' | 'admin',
   ): Promise<Consent> {
     const consent = await this.consentRepository.findById(consentId);
-    
+
     // Check if consent has expired
     if (new Date() > new Date(consent.expiresAt)) {
       await this.expireConsent(consent);
@@ -107,9 +105,9 @@ export class ConsentService {
   }
 
   async getConsent(
-    consentId: string, 
-    requesterId: string, 
-    requesterType: 'subject' | 'client' | 'admin'
+    consentId: string,
+    requesterId: string,
+    requesterType: 'subject' | 'client' | 'admin',
   ): Promise<Consent> {
     const consent = await this.consentRepository.findById(consentId);
 
@@ -128,11 +126,11 @@ export class ConsentService {
     subjectId: string,
     clientId: string,
     accountId: string,
-    requiredScopes: string[]
+    requiredScopes: string[],
   ): Promise<boolean> {
     try {
       const consents = await this.consentRepository.findBySubjectId(subjectId);
-      
+
       for (const consent of consents) {
         // Check if consent matches client and is active
         if (consent.clientId !== clientId || consent.status !== 'ACTIVE') {
@@ -151,8 +149,8 @@ export class ConsentService {
         }
 
         // Check if consent has all required scopes
-        const hasAllScopes = requiredScopes.every(scope => 
-          consent.dataScopes.includes(scope as any)
+        const hasAllScopes = requiredScopes.every(scope =>
+          consent.dataScopes.includes(scope as any),
         );
 
         if (hasAllScopes) {
@@ -209,7 +207,7 @@ export class ConsentService {
     consent: Consent,
     action: string,
     actorId: string,
-    actorType: 'subject' | 'client' | 'admin'
+    actorType: 'subject' | 'client' | 'admin',
   ): void {
     switch (action) {
       case 'approve':
@@ -217,7 +215,7 @@ export class ConsentService {
           throw new ForbiddenError('Only the subject can approve consent');
         }
         break;
-      
+
       case 'revoke':
         if (actorType === 'subject' && actorId !== consent.subjectId) {
           throw new ForbiddenError('Subject can only revoke their own consent');
@@ -227,14 +225,14 @@ export class ConsentService {
           throw new ForbiddenError('Insufficient permissions to revoke consent');
         }
         break;
-      
+
       case 'suspend':
       case 'resume':
         if (actorType !== 'admin') {
           throw new ForbiddenError('Only admins can suspend/resume consent');
         }
         break;
-      
+
       default:
         throw new ValidationError(`Invalid action: ${action}`);
     }
@@ -243,7 +241,7 @@ export class ConsentService {
   private validateGetPermissions(
     consent: Consent,
     requesterId: string,
-    requesterType: 'subject' | 'client' | 'admin'
+    requesterType: 'subject' | 'client' | 'admin',
   ): void {
     switch (requesterType) {
       case 'subject':
@@ -251,17 +249,17 @@ export class ConsentService {
           throw new ForbiddenError('Subject can only access their own consent');
         }
         break;
-      
+
       case 'client':
         if (requesterId !== consent.clientId) {
           throw new ForbiddenError('Client can only access their own consent');
         }
         break;
-      
+
       case 'admin':
         // Admins can access any consent
         break;
-      
+
       default:
         throw new ForbiddenError('Invalid requester type');
     }
@@ -285,20 +283,20 @@ export class ConsentService {
   private validateStateTransition(
     currentStatus: ConsentStatus,
     newStatus: ConsentStatus,
-    action: string
+    action: string,
   ): void {
     const validTransitions: Record<ConsentStatus, ConsentStatus[]> = {
-      'PENDING': ['ACTIVE', 'REVOKED'],
-      'ACTIVE': ['SUSPENDED', 'REVOKED'],
-      'SUSPENDED': ['ACTIVE', 'REVOKED'],
-      'REVOKED': [], // Terminal state
-      'EXPIRED': [], // Terminal state
+      PENDING: ['ACTIVE', 'REVOKED'],
+      ACTIVE: ['SUSPENDED', 'REVOKED'],
+      SUSPENDED: ['ACTIVE', 'REVOKED'],
+      REVOKED: [], // Terminal state
+      EXPIRED: [], // Terminal state
     };
 
     const allowedNextStates = validTransitions[currentStatus];
     if (!allowedNextStates.includes(newStatus)) {
       throw new ConflictError(
-        `Invalid state transition from ${currentStatus} to ${newStatus} via action ${action}`
+        `Invalid state transition from ${currentStatus} to ${newStatus} via action ${action}`,
       );
     }
   }

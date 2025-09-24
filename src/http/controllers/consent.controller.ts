@@ -1,9 +1,9 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { ConsentService } from '../../domain/services/consent.service.js';
-import { 
-  CreateConsentRequestSchema, 
-  UpdateConsentRequestSchema
+import {
+  CreateConsentRequestSchema,
+  UpdateConsentRequestSchema,
 } from '../../domain/entities/consent.js';
 import { FdxError } from '../../shared/errors/index.js';
 
@@ -36,16 +36,16 @@ export class ConsentController {
       const params = UpdateConsentParamsSchema.parse(request.params);
       const body = UpdateConsentRequestSchema.parse(request.body);
       const { userId, payload } = request.user!;
-      
+
       // Determine actor type based on request context
       // In a real implementation, this would come from JWT claims or request headers
       const actorType = this.determineActorType(payload);
-      
+
       const result = await this.consentService.updateConsent(
         params.consentId,
         body,
         userId,
-        actorType
+        actorType,
       );
 
       reply.code(200).send(result);
@@ -58,15 +58,11 @@ export class ConsentController {
     try {
       const params = GetConsentParamsSchema.parse(request.params);
       const { userId, payload } = request.user!;
-      
+
       // Determine requester type based on request context
       const requesterType = this.determineActorType(payload);
 
-      const result = await this.consentService.getConsent(
-        params.consentId,
-        userId,
-        requesterType
-      );
+      const result = await this.consentService.getConsent(params.consentId, userId, requesterType);
 
       reply.code(200).send(result);
     } catch (error) {
@@ -80,14 +76,14 @@ export class ConsentController {
     if (scopes.includes('admin')) {
       return 'admin';
     }
-    
+
     // If this is a client-credentials flow (no user sub), it's a client
     // If this is an authorization code flow (has user sub), it's usually a subject
     // For this simple implementation, assume if we have a 'sub' field, it represents a subject (end user)
     if (payload.sub) {
       return 'subject';
     }
-    
+
     // Fallback to client if no sub (pure client credentials)
     return 'client';
   }

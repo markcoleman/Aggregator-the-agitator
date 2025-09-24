@@ -118,8 +118,90 @@ describe('ConsentService', () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it('should validate state transitions', async () => {
-      // Create a consent first
+    it('should allow admin to suspend consent', async () => {
+      // Create and approve a consent first
+      const createRequest = {
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        dataScopes: ['accounts:read'] as const,
+        accountIds: ['acc-001'],
+        purpose: 'Test purpose',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+      };
+
+      const created = await consentService.createConsent(createRequest, 'client-456');
+      
+      // Approve it first
+      await consentService.updateConsent(created.id, { action: 'approve' }, 'user-123', 'subject');
+
+      // Now suspend it as admin
+      const suspendRequest = { action: 'suspend' as const, reason: 'Security review' };
+      const result = await consentService.updateConsent(created.id, suspendRequest, 'admin-123', 'admin');
+
+      expect(result.status).toBe('SUSPENDED');
+    });
+
+    it('should allow admin to resume suspended consent', async () => {
+      // Create, approve, and suspend a consent first
+      const createRequest = {
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        dataScopes: ['accounts:read'] as const,
+        accountIds: ['acc-001'],
+        purpose: 'Test purpose',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+      };
+
+      const created = await consentService.createConsent(createRequest, 'client-456');
+      await consentService.updateConsent(created.id, { action: 'approve' }, 'user-123', 'subject');
+      await consentService.updateConsent(created.id, { action: 'suspend' }, 'admin-123', 'admin');
+
+      // Now resume it as admin
+      const resumeRequest = { action: 'resume' as const, reason: 'Review completed' };
+      const result = await consentService.updateConsent(created.id, resumeRequest, 'admin-123', 'admin');
+
+      expect(result.status).toBe('ACTIVE');
+    });
+
+    it('should prevent non-admin from suspending consent', async () => {
+      const createRequest = {
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        dataScopes: ['accounts:read'] as const,
+        accountIds: ['acc-001'],
+        purpose: 'Test purpose',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+      };
+
+      const created = await consentService.createConsent(createRequest, 'client-456');
+      await consentService.updateConsent(created.id, { action: 'approve' }, 'user-123', 'subject');
+
+      const suspendRequest = { action: 'suspend' as const };
+      await expect(
+        consentService.updateConsent(created.id, suspendRequest, 'user-123', 'subject')
+      ).rejects.toThrow(ForbiddenError);
+    });
+
+    it('should allow client to revoke their own consent', async () => {
+      const createRequest = {
+        subjectId: 'user-123',
+        clientId: 'client-456',
+        dataScopes: ['accounts:read'] as const,
+        accountIds: ['acc-001'],
+        purpose: 'Test purpose',
+        expiry: new Date(Date.now() + 86400000).toISOString(),
+      };
+
+      const created = await consentService.createConsent(createRequest, 'client-456');
+      await consentService.updateConsent(created.id, { action: 'approve' }, 'user-123', 'subject');
+
+      const revokeRequest = { action: 'revoke' as const, reason: 'No longer needed' };
+      const result = await consentService.updateConsent(created.id, revokeRequest, 'client-456', 'client');
+
+      expect(result.status).toBe('REVOKED');
+    });
+
+    it('should prevent client from revoking others consent', async () => {
       const createRequest = {
         subjectId: 'user-123',
         clientId: 'client-456',
@@ -131,14 +213,10 @@ describe('ConsentService', () => {
 
       const created = await consentService.createConsent(createRequest, 'client-456');
 
-      // Try to suspend from PENDING (invalid transition)
-      const updateRequest = {
-        action: 'suspend' as const,
-      };
-
+      const revokeRequest = { action: 'revoke' as const };
       await expect(
-        consentService.updateConsent(created.id, updateRequest, 'admin-123', 'admin')
-      ).rejects.toThrow(ConflictError);
+        consentService.updateConsent(created.id, revokeRequest, 'client-999', 'client')
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -160,12 +238,29 @@ describe('ConsentService', () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it('should allow admin to get any consent', async () => {
+    it('should allow client to get their own consent', async () => {
       mockRepository.seedTestData();
 
-      const result = await consentService.getConsent('consent-001', 'admin-123', 'admin');
+      const result = await consentService.getConsent('consent-001', 'client-456', 'client');
 
       expect(result.id).toBe('consent-001');
+      expect(result.clientId).toBe('client-456');
+    });
+
+    it('should prevent client from getting others consent', async () => {
+      mockRepository.seedTestData();
+
+      await expect(
+        consentService.getConsent('consent-001', 'client-999', 'client')
+      ).rejects.toThrow(ForbiddenError);
+    });
+
+    it('should reject invalid requester type in getConsent', async () => {
+      mockRepository.seedTestData();
+
+      await expect(
+        consentService.getConsent('consent-001', 'user-123', 'invalid' as any)
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -215,6 +310,20 @@ describe('ConsentService', () => {
       const hasConsent = await consentService.checkConsentForResource(
         'user-123',
         'client-999',
+        'acc-001',
+        ['accounts:read']
+      );
+
+      expect(hasConsent).toBe(false);
+    });
+
+    it('should return false when repository throws error', async () => {
+      // Mock repository to throw an error
+      mockRepository.findBySubjectId = vi.fn().mockRejectedValue(new Error('Database error'));
+
+      const hasConsent = await consentService.checkConsentForResource(
+        'user-123',
+        'client-456',
         'acc-001',
         ['accounts:read']
       );

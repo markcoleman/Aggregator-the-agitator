@@ -115,7 +115,7 @@ export async function createApp(): Promise<FastifyInstance> {
 
   // Initialize middleware that depends on services
   const consentMiddleware = new ConsentMiddleware(consentService);
-  
+
   // TODO: Use consentMiddleware in resource routes - currently prepared for integration
   // Temporary reference to avoid unused variable warning
   void consentMiddleware;

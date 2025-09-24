@@ -40,15 +40,11 @@ export class MockConsentRepository implements ConsentRepository {
   }
 
   async findBySubjectId(subjectId: string): Promise<Consent[]> {
-    return Array.from(this.consents.values()).filter(
-      consent => consent.subjectId === subjectId
-    );
+    return Array.from(this.consents.values()).filter(consent => consent.subjectId === subjectId);
   }
 
   async findByClientId(clientId: string): Promise<Consent[]> {
-    return Array.from(this.consents.values()).filter(
-      consent => consent.clientId === clientId
-    );
+    return Array.from(this.consents.values()).filter(consent => consent.clientId === clientId);
   }
 
   // Helper methods for testing
