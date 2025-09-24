@@ -554,4 +554,21 @@ describe('ConsentService', () => {
       expect(consent?.auditTrail).toHaveLength(1);
     });
   });
+
+  describe('Repository error handling', () => {
+    it('should handle addAuditEntry for non-existent consent', async () => {
+      // Test the error path in MockConsentRepository.addAuditEntry
+      await expect(
+        mockRepository.addAuditEntry('non-existent-id', {
+          timestamp: new Date().toISOString(),
+          action: 'test.action',
+          actor: 'test-actor',
+          actorType: 'admin',
+          previousStatus: 'PENDING',
+          newStatus: 'ACTIVE',
+          reason: 'Test audit entry',
+        })
+      ).rejects.toThrow('Consent with ID non-existent-id not found');
+    });
+  });
 });
