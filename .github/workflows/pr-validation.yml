@@ -9,6 +9,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   validate-pr:
     name: Validate PR
@@ -100,6 +105,8 @@ jobs:
     name: Code Quality Check
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -135,6 +142,8 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -168,6 +177,10 @@ jobs:
     name: Dependency Check
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -220,6 +233,10 @@ jobs:
     name: Auto Label
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
