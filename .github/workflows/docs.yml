@@ -1,0 +1,260 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**/*.ts'
+      - 'openapi.yaml'
+      - 'README.md'
+      - 'docs/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**/*.ts'
+      - 'openapi.yaml'
+      - 'README.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-openapi:
+    name: Validate OpenAPI Specification
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install OpenAPI validator
+        run: npm install -g @apidevtools/swagger-cli
+
+      - name: Validate OpenAPI spec
+        run: |
+          swagger-cli validate openapi.yaml
+          echo "✅ OpenAPI specification is valid"
+
+      - name: Bundle OpenAPI spec
+        run: |
+          swagger-cli bundle openapi.yaml --outfile openapi-bundled.yaml --type yaml
+          echo "✅ OpenAPI specification bundled successfully"
+
+      - name: Upload bundled spec
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-bundled
+          path: openapi-bundled.yaml
+          retention-days: 30
+
+  generate-docs:
+    name: Generate API Documentation
+    runs-on: ubuntu-latest
+    needs: validate-openapi
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start API server
+        run: |
+          pnpm build
+          pnpm start &
+          sleep 10
+          
+          # Check if server is running
+          curl -f http://localhost:3000/health || exit 1
+          echo "✅ API server is running"
+
+      - name: Generate documentation
+        run: |
+          # Create docs directory if it doesn't exist
+          mkdir -p docs
+          
+          # Download OpenAPI spec from running server
+          curl -o docs/openapi.json http://localhost:3000/docs/json
+          
+          # Verify the spec was downloaded
+          if [ -s docs/openapi.json ]; then
+            echo "✅ OpenAPI spec downloaded successfully"
+          else
+            echo "❌ Failed to download OpenAPI spec"
+            exit 1
+          fi
+
+      - name: Install Redoc CLI
+        run: npm install -g redoc-cli
+
+      - name: Generate HTML documentation
+        run: |
+          redoc build docs/openapi.json --output docs/api-docs.html
+          echo "✅ HTML documentation generated"
+
+      - name: Generate Markdown documentation
+        run: |
+          # Install widdershins for Markdown generation
+          npm install -g widdershins
+          
+          widdershins --summary docs/openapi.json --outfile docs/api-reference.md
+          echo "✅ Markdown documentation generated"
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-documentation
+          path: |
+            docs/openapi.json
+            docs/api-docs.html
+            docs/api-reference.md
+          retention-days: 30
+
+      - name: Stop API server
+        run: pkill -f "node dist/server.js" || true
+
+  check-documentation:
+    name: Check Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Check README structure
+        run: |
+          echo "Checking README.md structure..."
+          
+          required_sections=(
+            "# FDX Resource API"
+            "## Quick Start"
+            "## API Endpoints"
+            "## Authentication"
+            "## Development"
+            "## Testing"
+            "## Contributing"
+            "## License"
+          )
+          
+          for section in "${required_sections[@]}"; do
+            if grep -q "$section" README.md; then
+              echo "✅ Found: $section"
+            else
+              echo "❌ Missing: $section"
+              exit 1
+            fi
+          done
+          
+          echo "✅ README.md structure is valid"
+
+      - name: Check for broken links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          use-verbose-mode: 'no'
+          config-file: '.github/markdown-link-check-config.json'
+          folder-path: '.'
+          file-path: './README.md'
+
+      - name: Spell check documentation
+        uses: streetsidesoftware/cspell-action@v6
+        with:
+          files: |
+            README.md
+            docs/**/*.md
+            .github/**/*.md
+          config: '.github/cspell.json'
+          incremental_files_only: false
+
+  update-docs-pr:
+    name: Update Documentation PR
+    runs-on: ubuntu-latest
+    needs: [validate-openapi, generate-docs, check-documentation]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download documentation artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: api-documentation
+          path: docs/
+
+      - name: Check for documentation changes
+        id: docs-changes
+        run: |
+          if git diff --quiet docs/; then
+            echo "No documentation changes detected"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Documentation changes detected"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create documentation update PR
+        if: steps.docs-changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            
+            // Configure git
+            execSync('git config user.name "github-actions[bot]"');
+            execSync('git config user.email "github-actions[bot]@users.noreply.github.com"');
+            
+            // Create branch
+            const branchName = `docs/update-api-docs-${Date.now()}`;
+            execSync(`git checkout -b ${branchName}`);
+            
+            // Add and commit changes
+            execSync('git add docs/');
+            execSync('git commit -m "docs: update API documentation"');
+            execSync(`git push origin ${branchName}`);
+            
+            // Create PR
+            await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '📚 Update API Documentation',
+              head: branchName,
+              base: 'main',
+              body: `## Documentation Update
+              
+              This PR contains automatically generated API documentation updates.
+              
+              ### Changes
+              - Updated OpenAPI specification
+              - Regenerated HTML documentation
+              - Updated Markdown API reference
+              
+              ### Generated Files
+              - \`docs/openapi.json\` - Latest OpenAPI specification
+              - \`docs/api-docs.html\` - HTML documentation (Redoc)
+              - \`docs/api-reference.md\` - Markdown API reference
+              
+              ### Review Notes
+              - This PR was automatically generated by the documentation workflow
+              - Please review the generated documentation for accuracy
+              - Merge this PR to update the public documentation
+              
+              **Auto-generated on:** ${new Date().toISOString()}
+              **Workflow run:** ${{ github.run_id }}`,
+              labels: ['documentation', 'automated']
+            });

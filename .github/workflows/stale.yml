@@ -1,0 +1,90 @@
+name: Mark stale issues and pull requests
+
+on:
+  schedule:
+    # Run daily at 9 AM UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    
+    steps:
+      - uses: actions/stale@v9
+        with:
+          # General settings
+          days-before-issue-stale: 60
+          days-before-pr-stale: 30
+          days-before-issue-close: 14
+          days-before-pr-close: 7
+          
+          # Stale issue settings
+          stale-issue-message: |
+            This issue has been automatically marked as stale because it has not had recent activity. 
+            It will be closed in 14 days if no further activity occurs.
+            
+            If this issue is still relevant, please:
+            - Add a comment to keep it open
+            - Update the issue with current information
+            - Add the `keep-open` label to prevent auto-closure
+            
+            Thank you for your contributions! 🙏
+          
+          stale-issue-label: 'stale'
+          close-issue-message: |
+            This issue has been automatically closed due to inactivity.
+            
+            If you believe this issue is still relevant, please:
+            - Reopen the issue
+            - Provide updated information
+            - Reference this issue in a new issue if the problem persists
+            
+            Thank you for your understanding! 🙏
+          
+          # Stale PR settings  
+          stale-pr-message: |
+            This pull request has been automatically marked as stale because it has not had recent activity.
+            It will be closed in 7 days if no further activity occurs.
+            
+            If this PR is still relevant, please:
+            - Rebase or merge the latest changes
+            - Address any requested changes
+            - Add a comment to keep it open
+            - Add the `keep-open` label to prevent auto-closure
+            
+            Thank you for your contributions! 🙏
+          
+          stale-pr-label: 'stale'
+          close-pr-message: |
+            This pull request has been automatically closed due to inactivity.
+            
+            If you would like to continue working on this PR:
+            - Reopen the pull request
+            - Rebase with the latest main branch
+            - Address any outstanding feedback
+            
+            Thank you for your contributions! 🙏
+          
+          # Labels that prevent staling
+          exempt-issue-labels: 'keep-open,bug,security,enhancement,good-first-issue,help-wanted,pinned'
+          exempt-pr-labels: 'keep-open,security,dependencies,hotfix,pinned'
+          
+          # Only close issues/PRs with specific labels
+          only-labels: ''
+          
+          # Additional settings
+          remove-stale-when-updated: true
+          debug-only: false
+          ascending: false
+          start-date: ''
+          
+          # Custom exemptions
+          exempt-all-milestones: true
+          exempt-draft-pr: true
+          
+          # Operation limits
+          operations-per-run: 50

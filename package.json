@@ -18,7 +18,20 @@
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "test:ci": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "setup": "chmod +x scripts/setup-dev.sh && scripts/setup-dev.sh",
+    "docker:build": "docker build -t fdx-resource-api .",
+    "docker:run": "docker run -p 3000:3000 --env-file .env fdx-resource-api",
+    "docker:dev": "docker-compose --profile dev up --build",
+    "docker:prod": "docker-compose up --build -d",
+    "docker:stop": "docker-compose down",
+    "mock-auth": "node scripts/mock-auth-server.js",
+    "security:audit": "pnpm audit --audit-level moderate",
+    "security:fix": "pnpm audit fix",
+    "docs:generate": "redoc build openapi.yaml --output docs/api-docs.html",
+    "docs:serve": "redoc serve openapi.yaml --watch",
+    "clean": "rm -rf dist coverage .nyc_output",
+    "reset": "npm run clean && rm -rf node_modules && pnpm install"
   },
   "keywords": [
     "fdx",

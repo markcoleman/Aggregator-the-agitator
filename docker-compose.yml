@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  # FDX Resource API
+  fdx-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: fdx-resource-api
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      # JWT Configuration (using mock values for demo)
+      - JWT_ISSUER=https://mock-fdx-auth.example.com
+      - JWT_AUDIENCE=fdx-resource-api
+      - JWKS_URI=https://mock-fdx-auth.example.com/.well-known/jwks.json
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - fdx-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fdx-api.rule=Host(`api.localhost`)"
+      - "traefik.http.services.fdx-api.loadbalancer.server.port=3000"
+
+  # Development API (for development with hot reload)
+  fdx-api-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: fdx-resource-api-dev
+    ports:
+      - "3001:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+      # JWT Configuration (using mock values for demo)
+      - JWT_ISSUER=https://mock-fdx-auth.example.com
+      - JWT_AUDIENCE=fdx-resource-api
+      - JWKS_URI=https://mock-fdx-auth.example.com/.well-known/jwks.json
+    volumes:
+      - ./src:/app/src:ro
+      - ./test:/app/test:ro
+      - ./openapi.yaml:/app/openapi.yaml:ro
+    command: ["pnpm", "dev"]
+    restart: unless-stopped
+    networks:
+      - fdx-network
+    profiles:
+      - dev
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fdx-api-dev.rule=Host(`dev.api.localhost`)"
+      - "traefik.http.services.fdx-api-dev.loadbalancer.server.port=3000"
+
+  # Reverse proxy for local development
+  traefik:
+    image: traefik:v3.0
+    container_name: fdx-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--accesslog=true"
+    ports:
+      - "80:80"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - fdx-network
+    profiles:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
+
+  # Mock Authentication Server (for testing)
+  mock-auth:
+    image: node:20-alpine
+    container_name: fdx-mock-auth
+    working_dir: /app
+    ports:
+      - "3002:3000"
+    volumes:
+      - ./scripts/mock-auth-server.js:/app/server.js:ro
+    command: ["node", "server.js"]
+    environment:
+      - PORT=3000
+      - NODE_ENV=development
+    networks:
+      - fdx-network
+    profiles:
+      - mock
+    labels:
+      - "traefik.enable=true" 
+      - "traefik.http.routers.mock-auth.rule=Host(`auth.localhost`)"
+      - "traefik.http.services.mock-auth.loadbalancer.server.port=3000"
+
+networks:
+  fdx-network:
+    driver: bridge
+    name: fdx-network
+
+volumes:
+  node_modules:
+    name: fdx-api-node-modules

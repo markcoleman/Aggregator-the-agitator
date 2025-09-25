@@ -1,0 +1,300 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+
+jobs:
+  test:
+    name: Test Before Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run full test suite
+        run: |
+          pnpm typecheck
+          pnpm lint
+          pnpm format:check
+          pnpm build
+          pnpm test:ci
+          pnpm test:coverage
+
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Security audit
+        run: pnpm audit
+
+  determine-release:
+    name: Determine Release Version
+    runs-on: ubuntu-latest
+    needs: [test, security-check]
+    outputs:
+      should_release: ${{ steps.check_changes.outputs.should_release }}
+      new_version: ${{ steps.version.outputs.new_version }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes since last release
+        id: check_changes
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "No previous tags found, creating initial release"
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          else
+            CHANGES=$(git rev-list ${LAST_TAG}..HEAD --count)
+            if [ "$CHANGES" -gt 0 ]; then
+              echo "Found $CHANGES commits since last release"
+              echo "should_release=true" >> $GITHUB_OUTPUT
+            else
+              echo "No changes since last release"
+              echo "should_release=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Determine version bump
+        id: version
+        if: steps.check_changes.outputs.should_release == 'true'
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          
+          # Determine version bump based on commit messages or manual input
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+          else
+            # Auto-determine based on conventional commits
+            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            COMMITS_SINCE_TAG=""
+            if [ -n "$LAST_TAG" ]; then
+              COMMITS_SINCE_TAG=$(git log ${LAST_TAG}..HEAD --oneline)
+            else
+              COMMITS_SINCE_TAG=$(git log --oneline)
+            fi
+            
+            if echo "$COMMITS_SINCE_TAG" | grep -E "^[a-f0-9]+ (feat|BREAKING CHANGE)" > /dev/null; then
+              if echo "$COMMITS_SINCE_TAG" | grep "BREAKING CHANGE" > /dev/null; then
+                RELEASE_TYPE="major"
+              else
+                RELEASE_TYPE="minor"
+              fi
+            elif echo "$COMMITS_SINCE_TAG" | grep -E "^[a-f0-9]+ (fix|perf)" > /dev/null; then
+              RELEASE_TYPE="patch"
+            else
+              RELEASE_TYPE="patch"
+            fi
+          fi
+          
+          echo "Current version: $CURRENT_VERSION"
+          echo "Release type: $RELEASE_TYPE"
+          
+          # Calculate new version
+          IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+          MAJOR=${VERSION_PARTS[0]}
+          MINOR=${VERSION_PARTS[1]}
+          PATCH=${VERSION_PARTS[2]}
+          
+          case $RELEASE_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "New version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        if: steps.check_changes.outputs.should_release == 'true'
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          CHANGELOG=""
+          
+          if [ -n "$LAST_TAG" ]; then
+            CHANGELOG=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s (%h)" --reverse)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --reverse)
+          fi
+          
+          echo "Changelog:"
+          echo "$CHANGELOG"
+          
+          # Save changelog for use in release
+          echo "$CHANGELOG" > changelog.txt
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: determine-release
+    if: needs.determine-release.outputs.should_release == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Update version in package.json
+        run: |
+          npm version ${{ needs.determine-release.outputs.new_version }} --no-git-tag-version
+
+      - name: Build the project
+        run: pnpm build
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore: bump version to v${{ needs.determine-release.outputs.new_version }}"
+          git push
+
+      - name: Create Git tag
+        run: |
+          git tag v${{ needs.determine-release.outputs.new_version }}
+          git push origin v${{ needs.determine-release.outputs.new_version }}
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.determine-release.outputs.new_version }}
+          release_name: Release v${{ needs.determine-release.outputs.new_version }}
+          body: |
+            ## Changes in v${{ needs.determine-release.outputs.new_version }}
+            
+            ${{ needs.determine-release.outputs.changelog }}
+            
+            ## Installation
+            
+            ```bash
+            git clone https://github.com/markcoleman/Aggregator-the-agitator.git
+            cd Aggregator-the-agitator
+            git checkout v${{ needs.determine-release.outputs.new_version }}
+            pnpm install
+            pnpm build
+            ```
+            
+            ## Docker
+            
+            ```bash
+            docker build -t fdx-resource-api:v${{ needs.determine-release.outputs.new_version }} .
+            ```
+          draft: false
+          prerelease: false
+
+  notify-release:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [determine-release, create-release]
+    if: needs.determine-release.outputs.should_release == 'true'
+    
+    steps:
+      - name: Comment on related issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newVersion = '${{ needs.determine-release.outputs.new_version }}';
+            const changelog = `${{ needs.determine-release.outputs.changelog }}`;
+            
+            // Find issues that might be related to this release
+            const commits = changelog.split('\n');
+            const issueNumbers = new Set();
+            
+            commits.forEach(commit => {
+              const issueMatch = commit.match(/#(\d+)/g);
+              if (issueMatch) {
+                issueMatch.forEach(match => {
+                  const issueNumber = match.replace('#', '');
+                  issueNumbers.add(issueNumber);
+                });
+              }
+            });
+            
+            // Comment on related issues
+            for (const issueNumber of issueNumbers) {
+              try {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(issueNumber),
+                  body: `🎉 This issue has been resolved in release [v${newVersion}](https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/v${newVersion})`
+                });
+              } catch (error) {
+                console.log(`Could not comment on issue #${issueNumber}: ${error.message}`);
+              }
+            }
