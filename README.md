@@ -5,6 +5,7 @@ A Node.js implementation of the Financial Data Exchange (FDX) Resource API speci
 ## Features
 
 - **FDX v6 Compliance**: Implements FDX API specification for standardized financial data access
+- **Multiple Aggregator Support**: Supports both mock data and Yodlee aggregator integration
 - **JWT Authentication**: OAuth2/OIDC token validation with JWKs support
 - **Comprehensive Endpoints**: Accounts, transactions, contacts, payment networks, and statements
 - **Type Safety**: Full TypeScript implementation with Zod validation
@@ -17,6 +18,7 @@ A Node.js implementation of the Financial Data Exchange (FDX) Resource API speci
 - **Runtime**: Node.js 20 LTS
 - **Language**: TypeScript
 - **Framework**: Fastify (high-performance web framework)
+- **Aggregators**: Mock data (default) and Yodlee integration
 - **Authentication**: JWT with JWKs validation using `jose`
 - **Validation**: Zod schemas
 - **Testing**: Vitest + Supertest
@@ -112,7 +114,30 @@ PORT=3000
 HOST=0.0.0.0
 NODE_ENV=development
 LOG_LEVEL=info
+
+# Aggregator Configuration
+AGGREGATOR_PROVIDER=mock  # Options: mock, yodlee
+
+# Yodlee Configuration (required when AGGREGATOR_PROVIDER=yodlee)
+YODLEE_BASE_URL=https://sandbox.api.yodlee.com
+YODLEE_CLIENT_ID=your_yodlee_client_id
+YODLEE_CLIENT_SECRET=your_yodlee_client_secret
 ```
+
+### Aggregator Configuration
+
+The API supports multiple data aggregation providers:
+
+#### Mock Provider (Default)
+- Uses predefined mock data for testing and development
+- No additional configuration required
+- Provides consistent test data across environments
+
+#### Yodlee Provider
+- Integrates with Yodlee's financial data aggregation API
+- Requires valid Yodlee API credentials
+- Supports real financial institution connections
+- Configure using the `YODLEE_*` environment variables above
 
 ### Required Scopes
 

@@ -25,12 +25,20 @@ import { StatementsService } from './domain/services/statements.service.js';
 import { ConsentService } from './domain/services/consent.service.js';
 
 // Repositories
-import { MockAccountRepository } from './infra/repositories/accounts.repo.mock.js';
-import { MockTransactionRepository } from './infra/repositories/transactions.repo.mock.js';
-import { MockContactRepository } from './infra/repositories/contact.repo.mock.js';
-import { MockPaymentNetworkRepository } from './infra/repositories/payment-networks.repo.mock.js';
-import { MockStatementRepository } from './infra/repositories/statements.repo.mock.js';
+import { MockAccountRepository, AccountRepository } from './infra/repositories/accounts.repo.mock.js';
+import { MockTransactionRepository, TransactionRepository } from './infra/repositories/transactions.repo.mock.js';
+import { MockContactRepository, ContactRepository } from './infra/repositories/contact.repo.mock.js';
+import { MockPaymentNetworkRepository, PaymentNetworkRepository } from './infra/repositories/payment-networks.repo.mock.js';
+import { MockStatementRepository, StatementRepository } from './infra/repositories/statements.repo.mock.js';
 import { MockConsentRepository } from './infra/repositories/consent.repo.mock.js';
+
+// Aggregator repositories
+import { AggregatorAccountRepository } from './infra/repositories/accounts.repo.aggregator.js';
+import { AggregatorTransactionRepository } from './infra/repositories/transactions.repo.aggregator.js';
+import { AggregatorContactRepository } from './infra/repositories/contact.repo.aggregator.js';
+import { AggregatorPaymentNetworkRepository } from './infra/repositories/payment-networks.repo.aggregator.js';
+import { AggregatorStatementRepository } from './infra/repositories/statements.repo.aggregator.js';
+import { AggregatorFactory } from './infra/aggregators/aggregator.factory.js';
 
 export async function createApp(): Promise<FastifyInstance> {
   const fastify = Fastify({
@@ -92,12 +100,32 @@ export async function createApp(): Promise<FastifyInstance> {
   // Initialize dependencies
   const authMiddleware = new AuthMiddleware();
 
-  // Repositories
-  const accountRepository = new MockAccountRepository();
-  const transactionRepository = new MockTransactionRepository();
-  const contactRepository = new MockContactRepository();
-  const paymentNetworkRepository = new MockPaymentNetworkRepository();
-  const statementRepository = new MockStatementRepository();
+  // Initialize repositories based on aggregator configuration
+  const aggregator = await AggregatorFactory.getAggregator();
+  
+  let accountRepository: AccountRepository;
+  let transactionRepository: TransactionRepository;
+  let contactRepository: ContactRepository;
+  let paymentNetworkRepository: PaymentNetworkRepository;
+  let statementRepository: StatementRepository;
+
+  if (appConfig.aggregator.provider === 'mock') {
+    // Use direct mock repositories for backward compatibility and performance
+    accountRepository = new MockAccountRepository();
+    transactionRepository = new MockTransactionRepository();
+    contactRepository = new MockContactRepository();
+    paymentNetworkRepository = new MockPaymentNetworkRepository();
+    statementRepository = new MockStatementRepository();
+  } else {
+    // Use aggregator-based repositories
+    accountRepository = new AggregatorAccountRepository(aggregator);
+    transactionRepository = new AggregatorTransactionRepository(aggregator);
+    contactRepository = new AggregatorContactRepository(aggregator);
+    paymentNetworkRepository = new AggregatorPaymentNetworkRepository(aggregator);
+    statementRepository = new AggregatorStatementRepository(aggregator);
+  }
+
+  // Consent repository is always mock for now (doesn't depend on aggregator)
   const consentRepository = new MockConsentRepository();
 
   // Seed consent repository with test data
