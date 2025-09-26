@@ -76,7 +76,12 @@ export class MockAggregator extends BaseAggregatorImpl {
     return result.paymentNetworks;
   }
 
-  async getStatements(accountId: string, userId: string, limit: number, offset: number): Promise<Statement[]> {
+  async getStatements(
+    accountId: string,
+    userId: string,
+    limit: number,
+    offset: number,
+  ): Promise<Statement[]> {
     const result = await this.statementRepository.findByAccountId(accountId, userId, limit, offset);
     return result.statements;
   }

@@ -26,18 +26,20 @@ export class AggregatorFactory {
     const provider = appConfig.aggregator.provider;
 
     switch (provider) {
-      case 'mock':
+      case 'mock': {
         const mockAggregator = new MockAggregator();
         await mockAggregator.initialize();
         return mockAggregator;
+      }
 
-      case 'yodlee':
+      case 'yodlee': {
         if (!appConfig.aggregator.yodlee) {
           throw new Error('Yodlee configuration is required when using Yodlee aggregator');
         }
         const yodleeAggregator = new YodleeAggregator(appConfig.aggregator.yodlee);
         await yodleeAggregator.initialize();
         return yodleeAggregator;
+      }
 
       default:
         throw new Error(`Unsupported aggregator provider: ${provider}`);

@@ -1,5 +1,10 @@
 import { BaseAggregatorImpl } from '../base.aggregator.js';
-import { Account, AccountsResponse, AccountType, AccountStatus } from '../../../domain/entities/account.js';
+import {
+  Account,
+  AccountsResponse,
+  AccountType,
+  AccountStatus,
+} from '../../../domain/entities/account.js';
 import { Transaction } from '../../../domain/entities/transaction.js';
 import { Contact } from '../../../domain/entities/contact.js';
 import { PaymentNetwork } from '../../../domain/entities/payment-network.js';
@@ -30,7 +35,7 @@ export class YodleeAggregator extends BaseAggregatorImpl {
 
   async getAccounts(userId: string, limit: number, offset: number): Promise<AccountsResponse> {
     await this.ensureAuthenticated();
-    
+
     try {
       // In a real implementation, this would call Yodlee's accounts API
       // For now, we'll simulate the response with Yodlee-like data structure
@@ -41,9 +46,10 @@ export class YodleeAggregator extends BaseAggregatorImpl {
         top: limit,
       });
 
-      const accounts = yodleeAccounts.account?.map((yodleeAccount: any) => 
-        this.mapYodleeAccountToFDX(yodleeAccount)
-      ) || [];
+      const accounts =
+        yodleeAccounts.account?.map((yodleeAccount: any) =>
+          this.mapYodleeAccountToFDX(yodleeAccount),
+        ) || [];
 
       return {
         accounts,
@@ -51,7 +57,7 @@ export class YodleeAggregator extends BaseAggregatorImpl {
           totalCount: yodleeAccounts.totalCount || accounts.length,
           offset,
           limit,
-          hasMore: (offset + limit) < (yodleeAccounts.totalCount || accounts.length),
+          hasMore: offset + limit < (yodleeAccounts.totalCount || accounts.length),
         },
       };
     } catch (error) {
@@ -61,7 +67,7 @@ export class YodleeAggregator extends BaseAggregatorImpl {
 
   async getAccount(accountId: string, userId: string): Promise<Account> {
     await this.ensureAuthenticated();
-    
+
     try {
       const yodleeAccount = await this.callYodleeAPI(`/accounts/${accountId}`, {
         loginName: userId,
@@ -89,7 +95,7 @@ export class YodleeAggregator extends BaseAggregatorImpl {
     toDate?: string,
   ): Promise<Transaction[]> {
     await this.ensureAuthenticated();
-    
+
     try {
       const params: any = {
         loginName: userId,
@@ -102,10 +108,12 @@ export class YodleeAggregator extends BaseAggregatorImpl {
       if (toDate) params.toDate = toDate;
 
       const yodleeTransactions = await this.callYodleeAPI('/transactions', params);
-      
-      return yodleeTransactions.transaction?.map((yodleeTxn: any) => 
-        this.mapYodleeTransactionToFDX(yodleeTxn)
-      ) || [];
+
+      return (
+        yodleeTransactions.transaction?.map((yodleeTxn: any) =>
+          this.mapYodleeTransactionToFDX(yodleeTxn),
+        ) || []
+      );
     } catch (error) {
       throw new Error(`Failed to fetch transactions from Yodlee: ${error}`);
     }
@@ -113,11 +121,11 @@ export class YodleeAggregator extends BaseAggregatorImpl {
 
   async getContact(accountId: string, userId: string): Promise<Contact> {
     await this.ensureAuthenticated();
-    
+
     try {
       // Yodlee doesn't have a direct contact endpoint, so we'll derive from account info
       const account = await this.getAccount(accountId, userId);
-      
+
       return {
         name: `${account.accountName} Contact`,
         address: {
@@ -137,14 +145,14 @@ export class YodleeAggregator extends BaseAggregatorImpl {
 
   async getPaymentNetworks(accountId: string, userId: string): Promise<PaymentNetwork[]> {
     await this.ensureAuthenticated();
-    
+
     try {
       // Yodlee doesn't have a specific payment networks endpoint
       // We'll return default networks based on account type
       const account = await this.getAccount(accountId, userId);
-      
+
       const networks: PaymentNetwork[] = [];
-      
+
       if (account.accountType === 'CREDIT_CARD') {
         networks.push(
           {
@@ -156,7 +164,7 @@ export class YodleeAggregator extends BaseAggregatorImpl {
             networkId: 'mastercard-001',
             networkName: 'Mastercard',
             accountNumber: account.accountNumber,
-          }
+          },
         );
       } else if (account.accountType === 'CHECKING' || account.accountType === 'SAVINGS') {
         networks.push({
@@ -173,9 +181,14 @@ export class YodleeAggregator extends BaseAggregatorImpl {
     }
   }
 
-  async getStatements(accountId: string, userId: string, limit: number, offset: number): Promise<Statement[]> {
+  async getStatements(
+    accountId: string,
+    userId: string,
+    limit: number,
+    offset: number,
+  ): Promise<Statement[]> {
     await this.ensureAuthenticated();
-    
+
     try {
       const yodleeStatements = await this.callYodleeAPI('/statements', {
         loginName: userId,
@@ -184,9 +197,11 @@ export class YodleeAggregator extends BaseAggregatorImpl {
         top: limit,
       });
 
-      return yodleeStatements.statement?.map((yodleeStmt: any) => 
-        this.mapYodleeStatementToFDX(yodleeStmt)
-      ) || [];
+      return (
+        yodleeStatements.statement?.map((yodleeStmt: any) =>
+          this.mapYodleeStatementToFDX(yodleeStmt),
+        ) || []
+      );
     } catch (error) {
       throw new Error(`Failed to fetch statements from Yodlee: ${error}`);
     }
@@ -194,7 +209,7 @@ export class YodleeAggregator extends BaseAggregatorImpl {
 
   async getStatement(accountId: string, statementId: string, userId: string): Promise<Statement> {
     await this.ensureAuthenticated();
-    
+
     try {
       const yodleeStatement = await this.callYodleeAPI(`/statements/${statementId}`, {
         loginName: userId,
@@ -219,7 +234,7 @@ export class YodleeAggregator extends BaseAggregatorImpl {
       // In a real implementation, this would authenticate with Yodlee using OAuth2 or similar
       // Using the configured Yodlee credentials
       console.log(`Authenticating with Yodlee at ${this.baseUrl} using client ${this.clientId}`);
-      
+
       // For now, we'll simulate the authentication
       this.authConfig = {
         accessToken: `mock-yodlee-token-${this.clientSecret.slice(0, 4)}`, // Use part of secret for uniqueness
@@ -240,7 +255,7 @@ export class YodleeAggregator extends BaseAggregatorImpl {
   private async callYodleeAPI(endpoint: string, _params: any): Promise<any> {
     // In a real implementation, this would make actual HTTP calls to Yodlee API
     // For now, we'll return mock data that simulates Yodlee's response structure
-    
+
     if (endpoint === '/accounts') {
       return {
         account: [
@@ -268,11 +283,11 @@ export class YodleeAggregator extends BaseAggregatorImpl {
             accountType: 'CREDIT_CARD',
             accountStatus: 'ACTIVE',
             balance: {
-              amount: -1250.30,
+              amount: -1250.3,
               currency: 'USD',
             },
             availableBalance: {
-              amount: 3749.70,
+              amount: 3749.7,
               currency: 'USD',
             },
             createdDate: '2023-03-20T00:00:00Z',
@@ -323,35 +338,37 @@ export class YodleeAggregator extends BaseAggregatorImpl {
         amount: yodleeAccount.balance?.amount || 0,
         currency: yodleeAccount.balance?.currency || 'USD',
       },
-      availableBalance: yodleeAccount.availableBalance ? {
-        amount: yodleeAccount.availableBalance.amount,
-        currency: yodleeAccount.availableBalance.currency,
-      } : undefined,
+      availableBalance: yodleeAccount.availableBalance
+        ? {
+            amount: yodleeAccount.availableBalance.amount,
+            currency: yodleeAccount.availableBalance.currency,
+          }
+        : undefined,
       openedDate: yodleeAccount.createdDate ? yodleeAccount.createdDate.split('T')[0] : undefined,
     };
   }
 
   private mapYodleeAccountType(yodleeType: string): AccountType {
     const typeMap: Record<string, AccountType> = {
-      'SAVINGS': 'SAVINGS',
-      'CHECKING': 'CHECKING',
-      'CREDIT_CARD': 'CREDIT_CARD',
-      'creditCard': 'CREDIT_CARD',
-      'bank': 'CHECKING',
-      'investment': 'INVESTMENT',
-      'LOAN': 'LOAN',
+      SAVINGS: 'SAVINGS',
+      CHECKING: 'CHECKING',
+      CREDIT_CARD: 'CREDIT_CARD',
+      creditCard: 'CREDIT_CARD',
+      bank: 'CHECKING',
+      investment: 'INVESTMENT',
+      LOAN: 'LOAN',
     };
-    
+
     return typeMap[yodleeType] || 'CHECKING';
   }
 
   private mapYodleeAccountStatus(yodleeStatus: string): AccountStatus {
     const statusMap: Record<string, AccountStatus> = {
-      'ACTIVE': 'ACTIVE',
-      'INACTIVE': 'INACTIVE',
-      'CLOSED': 'CLOSED',
+      ACTIVE: 'ACTIVE',
+      INACTIVE: 'INACTIVE',
+      CLOSED: 'CLOSED',
     };
-    
+
     return statusMap[yodleeStatus] || 'ACTIVE';
   }
 

@@ -49,7 +49,12 @@ export interface BaseAggregator {
   /**
    * Get statements for an account
    */
-  getStatements(accountId: string, userId: string, limit: number, offset: number): Promise<Statement[]>;
+  getStatements(
+    accountId: string,
+    userId: string,
+    limit: number,
+    offset: number,
+  ): Promise<Statement[]>;
 
   /**
    * Get a specific statement by ID
@@ -85,15 +90,22 @@ export abstract class BaseAggregatorImpl implements BaseAggregator {
   ): Promise<Transaction[]>;
   abstract getContact(accountId: string, userId: string): Promise<Contact>;
   abstract getPaymentNetworks(accountId: string, userId: string): Promise<PaymentNetwork[]>;
-  abstract getStatements(accountId: string, userId: string, limit: number, offset: number): Promise<Statement[]>;
+  abstract getStatements(
+    accountId: string,
+    userId: string,
+    limit: number,
+    offset: number,
+  ): Promise<Statement[]>;
   abstract getStatement(accountId: string, statementId: string, userId: string): Promise<Statement>;
 
   /**
    * Check if the aggregator is authenticated
    */
   protected isAuthenticated(): boolean {
-    return !!(this.authConfig?.accessToken && 
-             this.authConfig?.expiresAt && 
-             this.authConfig.expiresAt > new Date());
+    return !!(
+      this.authConfig?.accessToken &&
+      this.authConfig?.expiresAt &&
+      this.authConfig.expiresAt > new Date()
+    );
   }
 }
