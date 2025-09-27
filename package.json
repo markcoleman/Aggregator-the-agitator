@@ -28,8 +28,8 @@
     "mock-auth": "node scripts/mock-auth-server.js",
     "security:audit": "npm audit --audit-level moderate",
     "security:fix": "npm audit fix",
-    "docs:generate": "redoc build openapi.yaml --output docs/api-docs.html",
-    "docs:serve": "redoc serve openapi.yaml --watch",
+    "docs:generate": "redocly build-docs openapi.yaml --output docs/api-docs.html",
+    "docs:serve": "redocly preview-docs openapi.yaml",
     "clean": "rm -rf dist coverage .nyc_output",
     "reset": "npm run clean && rm -rf node_modules && npm install"
   },

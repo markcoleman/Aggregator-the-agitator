@@ -35,16 +35,16 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install OpenAPI validator
-        run: npm install -g @apidevtools/swagger-cli
+        run: npm install -g @redocly/cli
 
       - name: Validate OpenAPI spec
         run: |
-          swagger-cli validate openapi.yaml
+          redocly lint openapi.yaml
           echo "✅ OpenAPI specification is valid"
 
       - name: Bundle OpenAPI spec
         run: |
-          swagger-cli bundle openapi.yaml --outfile openapi-bundled.yaml --type yaml
+          redocly bundle openapi.yaml --output openapi-bundled.yaml
           echo "✅ OpenAPI specification bundled successfully"
 
       - name: Upload bundled spec
@@ -102,11 +102,11 @@ jobs:
           fi
 
       - name: Install Redoc CLI
-        run: npm install -g redoc-cli
+        run: npm install -g @redocly/cli
 
       - name: Generate HTML documentation
         run: |
-          redoc build docs/openapi.json --output docs/api-docs.html
+          redocly build-docs docs/openapi.json --output docs/api-docs.html
           echo "✅ HTML documentation generated"
 
       - name: Generate Markdown documentation
