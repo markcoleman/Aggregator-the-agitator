@@ -137,3 +137,12 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Lock files (project uses pnpm)
+package-lock.json
+
+# Generated documentation
+docs/api-docs.html
+docs/openapi.json
+docs/api-reference.md
+openapi-bundled.yaml
