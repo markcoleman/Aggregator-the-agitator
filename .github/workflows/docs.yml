@@ -174,7 +174,7 @@ jobs:
           file-path: './README.md'
 
       - name: Spell check documentation
-        uses: streetsidesoftware/cspell-action@v6
+        uses: streetsidesoftware/cspell-action@v7
         with:
           files: |
             README.md
