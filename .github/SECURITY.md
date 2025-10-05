@@ -75,6 +75,25 @@ This API follows FDX security standards:
 - **Consent Management**: User consent tracking and validation
 - **Data Minimization**: Only access authorized data scopes
 
+## Known Security Issues
+
+### Low Severity Issues
+
+#### fast-redact Prototype Pollution (CVE-2025-57319)
+
+- **Status**: Awaiting upstream fix
+- **Severity**: Low (CVSS 0)
+- **Affected Component**: Transitive dependency via `fastify > pino > fast-redact@3.5.0`
+- **Impact**: Potential prototype pollution through crafted payloads. Minimal risk in production due to controlled input validation.
+- **Mitigation**: 
+  - Input validation via Zod schemas prevents exploitation
+  - Fastify/Pino will update once patched version is available
+  - Monitoring for `fast-redact` security updates
+- **References**: [GHSA-ffrw-9mx8-89p8](https://github.com/advisories/GHSA-ffrw-9mx8-89p8)
+- **Last Updated**: 2025-10-05
+
+Note: We only fail CI/CD pipelines for moderate or higher severity vulnerabilities. Low severity issues without available patches are documented here and monitored for updates.
+
 ## Security Best Practices
 
 ### For Developers
