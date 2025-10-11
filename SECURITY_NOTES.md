@@ -41,7 +41,7 @@ fastify → pino → fast-redact@3.5.0
 
 ## Security Policy
 
-For our full security policy and how to report vulnerabilities, please see [SECURITY.md](SECURITY.md) if it exists, or contact the maintainers directly.
+For our full security policy and how to report vulnerabilities, please see [SECURITY.md](.github/SECURITY.md) or contact the maintainers directly.
 
 ## Dependency Updates
 
