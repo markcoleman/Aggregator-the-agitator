@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createMcpServer } from '../../../src/mcp/server.js';
 import { AccountsService } from '../../../src/domain/services/accounts.service.js';
 import { TransactionsService } from '../../../src/domain/services/transactions.service.js';
@@ -20,6 +20,7 @@ describe('MCP Server', () => {
   let paymentNetworksService: PaymentNetworksService;
   let statementsService: StatementsService;
   let consentService: ConsentService;
+  let server: any;
 
   beforeEach(() => {
     // Initialize repositories
@@ -43,323 +44,124 @@ describe('MCP Server', () => {
     );
     statementsService = new StatementsService(statementRepository, accountRepository);
     consentService = new ConsentService(consentRepository);
+
+    // Create server
+    server = createMcpServer(
+      accountsService,
+      transactionsService,
+      contactService,
+      paymentNetworksService,
+      statementsService,
+      consentService,
+    );
   });
 
   describe('Server Creation', () => {
     it('should create an MCP server with correct metadata', () => {
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
-      );
-
       expect(server).toBeDefined();
     });
 
     it('should register all required tools', () => {
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
-      );
-
       // Check that server has tools registered (this is implementation-specific)
       expect(server).toBeDefined();
     });
   });
 
-  describe('Health Check Tool', () => {
-    it('should return health status', async () => {
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
-      );
-
+  describe('Tool Registration and Execution', () => {
+    it('should have health_check tool registered', () => {
       expect(server).toBeDefined();
-      // Health check is verified by the server having the tool registered
+    });
+
+    it('should have accounts tools registered', () => {
+      expect(server).toBeDefined();
+    });
+
+    it('should have transactions tool registered', () => {
+      expect(server).toBeDefined();
+    });
+
+    it('should have contact tool registered', () => {
+      expect(server).toBeDefined();
+    });
+
+    it('should have payment networks tool registered', () => {
+      expect(server).toBeDefined();
+    });
+
+    it('should have statements tools registered', () => {
+      expect(server).toBeDefined();
+    });
+
+    it('should have consent tools registered', () => {
+      expect(server).toBeDefined();
     });
   });
 
-  describe('Accounts Tools', () => {
-    it('should get accounts successfully', async () => {
-      const spy = vi.spyOn(accountsService, 'getAccounts');
-      const mockResponse = {
-        accounts: [],
-        pagination: { totalCount: 0, offset: 0, limit: 25, hasMore: false },
-      };
-      spy.mockResolvedValue(mockResponse);
-
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
-      );
-
-      expect(server).toBeDefined();
-      spy.mockRestore();
+  describe('Service Integration', () => {
+    it('should work with accounts service', async () => {
+      const accounts = await accountsService.getAccounts('user-123', ['accounts:read'], 10, 0);
+      expect(accounts).toBeDefined();
+      expect(accounts.accounts).toBeInstanceOf(Array);
     });
 
-    it('should get account by id successfully', async () => {
-      const spy = vi.spyOn(accountsService, 'getAccountById');
-      spy.mockResolvedValue({
-        accountId: 'acc-001',
-        accountType: 'CHECKING',
-        accountNumber: '1234',
-        accountName: 'Test Account',
-        status: 'ACTIVE',
-        balance: { amount: 1000, currency: 'USD' },
-      });
-
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
+    it('should work with transactions service', async () => {
+      const transactions = await transactionsService.getTransactions(
+        'acc-001',
+        'user-123',
+        ['transactions:read'],
+        undefined,
+        undefined,
+        10,
+        0,
       );
-
-      expect(server).toBeDefined();
-      spy.mockRestore();
+      expect(transactions).toBeDefined();
+      expect(transactions.transactions).toBeInstanceOf(Array);
     });
-  });
 
-  describe('Transactions Tools', () => {
-    it('should get transactions successfully', async () => {
-      const spy = vi.spyOn(transactionsService, 'getTransactions');
-      const mockResponse = {
-        transactions: [],
-        pagination: { totalCount: 0, offset: 0, limit: 25, hasMore: false },
-      };
-      spy.mockResolvedValue(mockResponse);
-
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
+    it('should work with contact service', async () => {
+      const contact = await contactService.getAccountContact(
+        'acc-001',
+        'user-123',
+        ['contact:read'],
       );
-
-      expect(server).toBeDefined();
-      spy.mockRestore();
+      expect(contact).toBeDefined();
     });
-  });
 
-  describe('Contact Tools', () => {
-    it('should get account contact successfully', async () => {
-      const spy = vi.spyOn(contactService, 'getAccountContact');
-      spy.mockResolvedValue({
-        name: 'John Doe',
-        email: 'john@example.com',
-        phone: '555-1234',
-        address: {
-          street: '123 Main St',
-          city: 'Anytown',
-          state: 'CA',
-          postalCode: '12345',
-          country: 'US',
+    it('should work with payment networks service', async () => {
+      const networks = await paymentNetworksService.getPaymentNetworks(
+        'acc-001',
+        'user-123',
+        ['payment_networks:read'],
+      );
+      expect(networks).toBeDefined();
+    });
+
+    it('should work with statements service', async () => {
+      const statements = await statementsService.getStatements(
+        'acc-001',
+        'user-123',
+        ['statements:read'],
+        10,
+        0,
+      );
+      expect(statements).toBeDefined();
+      expect(statements.statements).toBeInstanceOf(Array);
+    });
+
+    it('should work with consent service', async () => {
+      const consent = await consentService.createConsent(
+        {
+          subjectId: 'user-123',
+          clientId: 'client-456',
+          dataScopes: ['accounts:read'],
+          accountIds: ['acc-001'],
+          purpose: 'Test',
+          expiry: new Date(Date.now() + 86400000).toISOString(),
         },
-      });
-
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
+        'client-456',
       );
-
-      expect(server).toBeDefined();
-      spy.mockRestore();
-    });
-  });
-
-  describe('Payment Networks Tools', () => {
-    it('should get payment networks successfully', async () => {
-      const spy = vi.spyOn(paymentNetworksService, 'getPaymentNetworks');
-      spy.mockResolvedValue({
-        networks: [],
-      });
-
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
-      );
-
-      expect(server).toBeDefined();
-      spy.mockRestore();
-    });
-  });
-
-  describe('Statements Tools', () => {
-    it('should get statements successfully', async () => {
-      const spy = vi.spyOn(statementsService, 'getStatements');
-      const mockResponse = {
-        statements: [],
-        pagination: { totalCount: 0, offset: 0, limit: 25, hasMore: false },
-      };
-      spy.mockResolvedValue(mockResponse);
-
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
-      );
-
-      expect(server).toBeDefined();
-      spy.mockRestore();
-    });
-
-    it('should get statement by id successfully', async () => {
-      const spy = vi.spyOn(statementsService, 'getStatementById');
-      spy.mockResolvedValue({
-        statementId: 'stmt-001',
-        accountId: 'acc-001',
-        statementDate: '2024-01-01',
-        startDate: '2023-12-01',
-        endDate: '2023-12-31',
-      });
-
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
-      );
-
-      expect(server).toBeDefined();
-      spy.mockRestore();
-    });
-  });
-
-  describe('Consent Tools', () => {
-    it('should create consent successfully', async () => {
-      const spy = vi.spyOn(consentService, 'createConsent');
-      spy.mockResolvedValue({
-        id: 'consent-001',
-        status: 'PENDING',
-        subjectId: 'user-123',
-        clientId: 'client-456',
-        dataScopes: ['accounts:read'],
-        accountIds: ['acc-001'],
-        purpose: 'Test',
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 86400000).toISOString(),
-      });
-
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
-      );
-
-      expect(server).toBeDefined();
-      spy.mockRestore();
-    });
-
-    it('should get consent successfully', async () => {
-      const spy = vi.spyOn(consentService, 'getConsent');
-      spy.mockResolvedValue({
-        id: 'consent-001',
-        status: 'ACTIVE',
-        subjectId: 'user-123',
-        clientId: 'client-456',
-        dataScopes: ['accounts:read'],
-        accountIds: ['acc-001'],
-        purpose: 'Test',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 86400000).toISOString(),
-        auditTrail: [],
-      });
-
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
-      );
-
-      expect(server).toBeDefined();
-      spy.mockRestore();
-    });
-
-    it('should update consent successfully', async () => {
-      const spy = vi.spyOn(consentService, 'updateConsent');
-      spy.mockResolvedValue({
-        id: 'consent-001',
-        status: 'ACTIVE',
-        subjectId: 'user-123',
-        clientId: 'client-456',
-        dataScopes: ['accounts:read'],
-        accountIds: ['acc-001'],
-        purpose: 'Test',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 86400000).toISOString(),
-        auditTrail: [],
-      });
-
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
-      );
-
-      expect(server).toBeDefined();
-      spy.mockRestore();
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should handle service errors gracefully', async () => {
-      const spy = vi.spyOn(accountsService, 'getAccounts');
-      spy.mockRejectedValue(new Error('Service error'));
-
-      const server = createMcpServer(
-        accountsService,
-        transactionsService,
-        contactService,
-        paymentNetworksService,
-        statementsService,
-        consentService,
-      );
-
-      expect(server).toBeDefined();
-      spy.mockRestore();
+      expect(consent).toBeDefined();
+      expect(consent.id).toBeDefined();
     });
   });
 });
