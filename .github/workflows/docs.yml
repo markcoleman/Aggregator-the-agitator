@@ -174,7 +174,7 @@ jobs:
           file-path: './README.md'
 
       - name: Spell check documentation
-        uses: streetsidesoftware/cspell-action@v6
+        uses: streetsidesoftware/cspell-action@v7
         with:
           files: |
             README.md
@@ -196,7 +196,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download documentation artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: api-documentation
           path: docs/
@@ -214,7 +214,7 @@ jobs:
 
       - name: Create documentation update PR
         if: steps.docs-changes.outputs.has_changes == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const { execSync } = require('child_process');
