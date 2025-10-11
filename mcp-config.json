@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "fdx-resource-api": {
+      "command": "node",
+      "args": ["dist/mcp/index.js"],
+      "description": "FDX-aligned REST API for financial data aggregation",
+      "capabilities": {
+        "tools": true,
+        "logging": true
+      }
+    }
+  }
+}
