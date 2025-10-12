@@ -7,6 +7,7 @@ A Node.js implementation of the Financial Data Exchange (FDX) Resource API speci
 - **FDX v6 Compliance**: Implements FDX API specification for standardized financial data access
 - **JWT Authentication**: OAuth2/OIDC token validation with JWKs support
 - **Comprehensive Endpoints**: Accounts, transactions, contacts, payment networks, and statements
+- **MCP Server**: Model Context Protocol server for AI agent integration
 - **Type Safety**: Full TypeScript implementation with Zod validation
 - **High Performance**: Built with Fastify for optimal performance
 - **Comprehensive Testing**: Unit and integration tests with >90% coverage
@@ -49,6 +50,23 @@ pnpm dev
 ```
 
 The API will be available at `http://localhost:3000` and documentation at `http://localhost:3000/docs`.
+
+### Using the MCP Server
+
+To use the Model Context Protocol (MCP) server for AI agent integration:
+
+```bash
+# Build the project
+npm run build
+
+# Start the MCP server
+npm run mcp
+
+# Or for development with hot reload
+npm run mcp:dev
+```
+
+See [MCP_README.md](MCP_README.md) for detailed MCP server documentation and usage examples.
 
 ### Using DevContainer
 

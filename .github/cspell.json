@@ -159,7 +159,11 @@
     "tracing",
     "metrics",
     "observability",
-    "telemetry"
+    "telemetry",
+    "modelcontextprotocol",
+    "GHSA",
+    "ffrw",
+    "Liskov"
   ],
   "flagWords": [],
   "ignoreWords": [],
