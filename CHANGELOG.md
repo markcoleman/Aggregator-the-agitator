@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced CI/CD pipeline with additional security and quality checks
 - Improved developer experience with better templates and automation
 
+### Fixed
+- Fixed TruffleHog secret scanning failure in scheduled security workflow runs
+
 ### Security
 - Added CodeQL security scanning
 - Implemented secret scanning with TruffleHog

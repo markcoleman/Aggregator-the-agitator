@@ -156,10 +156,19 @@ jobs:
 
       - name: Run TruffleHog OSS (scheduled/manual)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          extra_args: --debug --only-verified
+        run: |
+          # For scheduled scans, scan the entire repository history from the first commit.
+          # Using Docker directly instead of the GitHub Action to avoid the "BASE and HEAD 
+          # are the same" error that occurs when the action defaults to BASE=main and HEAD=HEAD.
+          FIRST_COMMIT=$(git rev-list --max-parents=0 HEAD)
+          docker run --rm -v "$PWD:/scan" \
+            ghcr.io/trufflesecurity/trufflehog:latest \
+            git file:///scan/ \
+            --since-commit "$FIRST_COMMIT" \
+            --only-verified \
+            --fail \
+            --no-update \
+            --github-actions
 
   license-check:
     name: License Compliance
