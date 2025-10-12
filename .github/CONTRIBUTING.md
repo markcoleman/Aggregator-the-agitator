@@ -163,7 +163,7 @@ Before submitting a PR, ensure:
 
 ### Bug Reports
 
-Use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.yml) and include:
+Use the [Bug Report template](ISSUE_TEMPLATE/bug_report.yml) and include:
 
 - Clear description of the issue
 - Steps to reproduce
@@ -173,7 +173,7 @@ Use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.yml) and include
 
 ### Feature Requests
 
-Use the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.yml) and include:
+Use the [Feature Request template](ISSUE_TEMPLATE/feature_request.yml) and include:
 
 - Problem description
 - Proposed solution
@@ -183,7 +183,7 @@ Use the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.yml) a
 
 ### Questions
 
-Use the [Question template](.github/ISSUE_TEMPLATE/question.yml) for:
+Use the [Question template](ISSUE_TEMPLATE/question.yml) for:
 
 - Usage questions
 - API clarifications

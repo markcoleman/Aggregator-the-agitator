@@ -898,6 +898,16 @@ components:
           description: Additional error details
 
   responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: BAD_REQUEST
+            message: Invalid request parameters
+
     Unauthorized:
       description: Authentication required
       content:

@@ -106,7 +106,7 @@ jobs:
 
       - name: Generate HTML documentation
         run: |
-          redoc build docs/openapi.json --output docs/api-docs.html
+          redoc-cli build docs/openapi.json --output docs/api-docs.html
           echo "✅ HTML documentation generated"
 
       - name: Generate Markdown documentation
