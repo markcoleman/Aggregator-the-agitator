@@ -162,7 +162,8 @@
     "telemetry",
     "modelcontextprotocol",
     "GHSA",
-    "ffrw"
+    "ffrw",
+    "Liskov"
   ],
   "flagWords": [],
   "ignoreWords": [],
