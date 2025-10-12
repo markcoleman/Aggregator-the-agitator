@@ -305,6 +305,20 @@ Releases are automated through GitHub Actions:
 3. **Comprehensive testing** before release
 4. **GitHub releases** with detailed notes
 
+### How Releases Work
+
+The release workflow automatically:
+- Determines version bump based on conventional commits (feat = minor, fix = patch, BREAKING CHANGE = major)
+- Runs full test suite and security checks
+- Updates package.json with new version
+- Commits version bump with retry logic to handle concurrent pushes
+- Creates and pushes a git tag
+- Generates GitHub release with changelog
+
+### Concurrent Push Handling
+
+The release workflow uses retry logic with rebase to handle race conditions when multiple workflows push to main simultaneously. This ensures releases proceed smoothly even with high activity on the main branch.
+
 ## Security
 
 For security issues, please:
