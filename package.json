@@ -67,7 +67,7 @@
     "@fastify/swagger": "^8.0.0",
     "@fastify/swagger-ui": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.20.0",
-    "dotenv": "^17.2.2",
+    "dotenv": "^17.2.3",
     "fastify": "^4.0.0",
     "fastify-plugin": "^5.1.0",
     "jose": "^6.1.0",
