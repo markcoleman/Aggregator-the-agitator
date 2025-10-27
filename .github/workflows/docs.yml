@@ -48,7 +48,7 @@ jobs:
           echo "✅ OpenAPI specification bundled successfully"
 
       - name: Upload bundled spec
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: openapi-bundled
           path: openapi-bundled.yaml
@@ -118,7 +118,7 @@ jobs:
           echo "✅ Markdown documentation generated"
 
       - name: Upload documentation artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: api-documentation
           path: |
