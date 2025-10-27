@@ -6,6 +6,7 @@ A Node.js implementation of the Financial Data Exchange (FDX) Resource API speci
 
 - **FDX v6 Compliance**: Implements FDX API specification for standardized financial data access
 - **JWT Authentication**: OAuth2/OIDC token validation with JWKs support
+- **Response Caching**: Intelligent in-memory caching with configurable TTL (default 1 minute)
 - **Comprehensive Endpoints**: Accounts, transactions, contacts, payment networks, and statements
 - **MCP Server**: Model Context Protocol server for AI agent integration
 - **Type Safety**: Full TypeScript implementation with Zod validation
@@ -303,11 +304,27 @@ HOST=0.0.0.0
 NODE_ENV=development
 LOG_LEVEL=info
 
+# Cache Configuration
+CACHE_ENABLED=true
+CACHE_TTL_SECONDS=60
+
 # JWT Authentication
 JWT_ISSUER=https://mock-fdx-auth.example.com
 JWT_AUDIENCE=fdx-resource-api
 JWKS_URI=https://mock-fdx-auth.example.com/.well-know/jwks.json
 ```
+
+#### Cache Configuration
+
+- **CACHE_ENABLED**: Enable/disable response caching (default: `true`)
+- **CACHE_TTL_SECONDS**: Cache time-to-live in seconds (default: `60`)
+
+The cache:
+- Only caches successful GET requests (2xx status codes)
+- Uses in-memory storage (suitable for single-instance deployments)
+- Includes user context in cache keys for security
+- Automatically expires entries after TTL
+- Adds `X-Cache: HIT` or `X-Cache: MISS` headers to responses
 
 ### Mock Data
 

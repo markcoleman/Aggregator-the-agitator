@@ -7,6 +7,7 @@ import swaggerUi from '@fastify/swagger-ui';
 import { appConfig } from './config/index.js';
 import { AuthMiddleware } from './http/middleware/authz.js';
 import { ConsentMiddleware } from './http/middleware/consent.js';
+import { CacheMiddleware } from './http/middleware/cache.js';
 
 // Controllers
 import { AccountsController } from './http/controllers/accounts.controller.js';
@@ -31,6 +32,9 @@ import { MockContactRepository } from './infra/repositories/contact.repo.mock.js
 import { MockPaymentNetworkRepository } from './infra/repositories/payment-networks.repo.mock.js';
 import { MockStatementRepository } from './infra/repositories/statements.repo.mock.js';
 import { MockConsentRepository } from './infra/repositories/consent.repo.mock.js';
+
+// Cache
+import { MemoryCacheService } from './infra/cache/memory-cache.service.js';
 
 export async function createApp(): Promise<FastifyInstance> {
   const fastify = Fastify({
@@ -91,6 +95,10 @@ export async function createApp(): Promise<FastifyInstance> {
 
   // Initialize dependencies
   const authMiddleware = new AuthMiddleware();
+
+  // Cache service
+  const cacheService = new MemoryCacheService();
+  const cacheMiddleware = new CacheMiddleware(cacheService, appConfig.cache.ttlSeconds);
 
   // Repositories
   const accountRepository = new MockAccountRepository();
@@ -159,64 +167,55 @@ export async function createApp(): Promise<FastifyInstance> {
     // Auth middleware for all FDX routes
     fastify.addHook('preHandler', authMiddleware.authenticate.bind(authMiddleware));
 
+    // Build preHandler arrays conditionally including cache
+    const buildPreHandlers = (requiredScope: string, consentScopes: string[]) => {
+      const handlers = [
+        authMiddleware.requireScope(requiredScope),
+        consentMiddleware.requireConsent(consentScopes),
+      ];
+      if (appConfig.cache.enabled) {
+        handlers.push(cacheMiddleware.cache());
+      }
+      return handlers;
+    };
+
     // Accounts routes
     fastify.get('/fdx/v6/accounts', {
-      preHandler: [
-        authMiddleware.requireScope('accounts:read'),
-        consentMiddleware.requireConsent(['accounts:read']),
-      ],
+      preHandler: buildPreHandlers('accounts:read', ['accounts:read']),
       handler: accountsController.getAccounts.bind(accountsController),
     });
 
     fastify.get('/fdx/v6/accounts/:accountId', {
-      preHandler: [
-        authMiddleware.requireScope('accounts:read'),
-        consentMiddleware.requireConsent(['accounts:read']),
-      ],
+      preHandler: buildPreHandlers('accounts:read', ['accounts:read']),
       handler: accountsController.getAccountById.bind(accountsController),
     });
 
     // Transactions routes
     fastify.get('/fdx/v6/accounts/:accountId/transactions', {
-      preHandler: [
-        authMiddleware.requireScope('transactions:read'),
-        consentMiddleware.requireConsent(['transactions:read']),
-      ],
+      preHandler: buildPreHandlers('transactions:read', ['transactions:read']),
       handler: transactionsController.getTransactions.bind(transactionsController),
     });
 
     // Contact routes
     fastify.get('/fdx/v6/accounts/:accountId/contact', {
-      preHandler: [
-        authMiddleware.requireScope('contact:read'),
-        consentMiddleware.requireConsent(['contact:read']),
-      ],
+      preHandler: buildPreHandlers('contact:read', ['contact:read']),
       handler: contactController.getAccountContact.bind(contactController),
     });
 
     // Payment networks routes
     fastify.get('/fdx/v6/accounts/:accountId/payment-networks', {
-      preHandler: [
-        authMiddleware.requireScope('payment_networks:read'),
-        consentMiddleware.requireConsent(['payment_networks:read']),
-      ],
+      preHandler: buildPreHandlers('payment_networks:read', ['payment_networks:read']),
       handler: paymentNetworksController.getPaymentNetworks.bind(paymentNetworksController),
     });
 
     // Statements routes
     fastify.get('/fdx/v6/accounts/:accountId/statements', {
-      preHandler: [
-        authMiddleware.requireScope('statements:read'),
-        consentMiddleware.requireConsent(['statements:read']),
-      ],
+      preHandler: buildPreHandlers('statements:read', ['statements:read']),
       handler: statementsController.getStatements.bind(statementsController),
     });
 
     fastify.get('/fdx/v6/accounts/:accountId/statements/:statementId', {
-      preHandler: [
-        authMiddleware.requireScope('statements:read'),
-        consentMiddleware.requireConsent(['statements:read']),
-      ],
+      preHandler: buildPreHandlers('statements:read', ['statements:read']),
       handler: statementsController.getStatementById.bind(statementsController),
     });
   });
