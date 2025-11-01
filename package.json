@@ -1,6 +1,6 @@
 {
   "name": "aggregator-the-agitator",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "FDX-aligned REST API for financial data aggregation",
   "main": "dist/server.js",
   "type": "module",
