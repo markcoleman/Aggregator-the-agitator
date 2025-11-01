@@ -84,7 +84,7 @@ jobs:
           fi
 
       - name: Upload security report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: security-report-${{ github.run_number }}
           path: security-report.md
@@ -212,7 +212,7 @@ jobs:
           echo "\`\`\`" >> license-report.md
 
       - name: Upload license report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: license-report-${{ github.run_number }}
           path: license-report.md
