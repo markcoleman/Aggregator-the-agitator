@@ -14,6 +14,10 @@ export interface AppConfig {
   logging: {
     level: string;
   };
+  cache: {
+    enabled: boolean;
+    ttlSeconds: number;
+  };
 }
 
 export const appConfig: AppConfig = {
@@ -27,5 +31,9 @@ export const appConfig: AppConfig = {
   },
   logging: {
     level: process.env['LOG_LEVEL'] || 'info',
+  },
+  cache: {
+    enabled: process.env['CACHE_ENABLED'] !== 'false',
+    ttlSeconds: parseInt(process.env['CACHE_TTL_SECONDS'] || '60', 10),
   },
 };
