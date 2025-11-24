@@ -32,7 +32,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install OpenAPI validator
         run: npm install -g @apidevtools/swagger-cli
@@ -61,7 +61,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Enable Corepack
         run: corepack enable
@@ -136,7 +136,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Check README structure
         run: |
@@ -191,7 +191,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
